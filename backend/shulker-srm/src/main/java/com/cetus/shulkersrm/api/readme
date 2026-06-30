@@ -1,0 +1,43 @@
+API Module (Фасад / Gateway)
+Точка входа в систему. Тонкая прослойка без бизнес-логики.
+
+Ответственность:
+
+Приём REST-запросов (Spring Controllers)
+Входная валидация (Jakarta Bean Validation)
+Авторизация (API-ключи → JWT в будущем)
+Делегирование запросов в доменные модули
+Таблицы в БД: нет
+
+Зависит от: Inventory, Logistics, Routing Engine
+
+Внутренняя структура:
+
+
+api/
+├── inventory/
+│   ├── ProductController.java
+│   ├── StockController.java
+│   └── dto/
+│       ├── ProductCreateRequest.java
+│       ├── ProductResponse.java
+│       ├── StockReplenishmentRequest.java
+│       └── StockResponse.java
+├── logistics/
+│   ├── WarehouseController.java
+│   ├── TransportController.java
+│   └── dto/
+│       ├── WarehouseCreateRequest.java
+│       ├── WarehouseResponse.java
+│       ├── TransportCreateRequest.java
+│       └── TransportResponse.java
+├── routing/
+│   ├── DeliveryController.java
+│   └── dto/
+│       ├── DeliveryRequest.java
+│       ├── DeliveryOptionResponse.java
+│       └── DeliveryOptionsListResponse.java
+└── config/
+    ├── SecurityConfig.java
+    ├── OpenApiConfig.java
+    └── JacksonConfig.java
