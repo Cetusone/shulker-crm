@@ -1,0 +1,169 @@
+.app-shell {
+  min-height: 100vh;
+}
+
+.sider {
+  border-right: 1px solid #e6eaf0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+
+.brand {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e6eaf0;
+}
+
+.brand .ant-typography {
+  display: block;
+  line-height: 1.25;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.side-menu {
+  border-inline-end: 0;
+  padding: 12px;
+}
+
+.topbar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid #e6eaf0;
+}
+
+.topbar h3.ant-typography {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.content {
+  padding: 24px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-grid .ant-statistic {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.page-header h4.ant-typography {
+  margin: 0 0 6px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  padding: 18px;
+}
+
+.form-panel {
+  position: sticky;
+  top: 96px;
+}
+
+.result-panel {
+  min-height: 420px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.field-block {
+  margin-bottom: 24px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.ant-table-wrapper {
+  background: #ffffff;
+  border: 1px solid #e6eaf0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.result-panel .ant-table-wrapper {
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .form-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px 18px;
+    gap: 10px;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
