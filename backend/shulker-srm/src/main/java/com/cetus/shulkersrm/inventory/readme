@@ -1,0 +1,44 @@
+Inventory Module (Управление запасами)
+Единственный модуль, имеющий право писать в таблицы товаров и остатков.
+
+Ответственность:
+
+Управление номенклатурой (справочник товаров, характеристики, единицы грузоместа)
+Учёт остатков (точное количество товара на каждом складе)
+Обработка пополнений (приёмка новых партий)
+Фильтрация наличия (по запросу — список складов с нужным товаром в достаточном объёме)
+Таблицы в БД: products, stocks
+
+Зависит от: Common
+
+Не владеет сущностью «Склад» — работает с warehouseId как с внешним ключом.
+
+Структура:
+
+
+inventory/
+├── api/                              # ПУБЛИЧНЫЙ контракт модуля
+│   ├── InventoryProvider.java        # Интерфейс (outbound port для других модулей)
+│   └── dto/
+│       ├── WarehouseStockInfo.java    # Информация о наличии
+│       └── ProductCargoInfo.java     # Грузоместо товара
+├── internal/                         # ВНУТРЕННОСТИ (недоступны снаружи)
+│   ├── service/
+│   │   ├── InventoryProviderImpl.java
+│   │   ├── ProductService.java
+│   │   └── StockService.java
+│   ├── domain/
+│   │   ├── Product.java              # Entity
+│   │   ├── Stock.java                # Entity (товар + склад + количество)
+│   │   ├── ProductCharacteristic.java # Value Object
+│   │   └── CargoUnit.java           # Value Object (единица грузоместа)
+│   ├── repository/
+│   │   ├── ProductJpaRepository.java
+│   │   └── StockJpaRepository.java
+│   ├── mapper/
+│   │   └── ProductMapper.java
+│   ├── listener/
+│   │   └── WarehouseEventListener.java  # Слушает события из Logistics
+│   └── exception/
+│       ├── ProductNotFoundException.java
+│       └── InsufficientStockException.java

@@ -1,0 +1,17 @@
+2.6 Common / Shared Kernel
+Общие компоненты, разделяемые всеми модулями.
+
+Содержит:
+
+
+common/
+├── domain/
+│   ├── BaseEntity.java              # Базовый класс (id, createdAt, updatedAt)
+│   └── Money.java                   # Value Object для денежных сумм
+├── exception/
+│   ├── GlobalExceptionHandler.java  # @ControllerAdvice
+│   └── ApiErrorResponse.java       # Стандартный формат ошибок
+├── validation/
+│   └── ...                          # Кастомные валидаторы
+└── util/
+    └── ...
