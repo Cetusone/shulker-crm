@@ -39,7 +39,7 @@ public class StockService implements StockServiceInterface {
         //TODO: Тута будет проверка на существование склада
         //warehouseClient.checkExists(warehouseId);
 
-        Stock stock = stockRepository.findByWarehouseIdAndProductId(wareHouseId, product.getId())
+        Stock stock = stockRepository.findByOwnWarehouseIdAndProductId(wareHouseId, product.getId())
                 .orElseGet(() -> Stock.builder()
                         .ownWarehouseId(wareHouseId)
                         .product(product)
