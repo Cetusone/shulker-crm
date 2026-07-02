@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface StockRepository extends JpaRepository<Stock, Long> {
 
     List<Stock> findAllByOwnWarehouseId(Long id);
-    Optional<Stock> findByWarehouseIdAndProductId(Long ownerWarehouseId, Long productId);
+    Optional<Stock> findByOwnWarehouseIdAndProductId(Long ownWarehouseId, Long productId);
 
 }
