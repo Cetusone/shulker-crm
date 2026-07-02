@@ -1,0 +1,34 @@
+package com.cetus.shulkercrm.api.inventory;
+
+import com.cetus.shulkercrm.inventory.api.dto.StockCreateRequest;
+import com.cetus.shulkercrm.inventory.api.dto.StockResponse;
+import com.cetus.shulkercrm.inventory.internal.service.StockService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@Slf4j
+@RequiredArgsConstructor
+@RequestMapping("/api/warehouse")
+public class StockController {
+
+    private final StockService stockService;
+
+    @PostMapping("/{id}/stock")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StockResponse addProductOnWarehouse(@PathVariable Long id, @RequestBody StockCreateRequest stockCreateRequest) {
+        log.info("Adding product on Warehouse {}", id);
+        return stockService.addProductOnWarehouse(id, stockCreateRequest);
+    }
+
+    @GetMapping("/{id}/stock")
+    public List<StockResponse> getAllStocks(@PathVariable Long id) {
+        log.info("Getting stocks from Warehouse {}", id);
+        return stockService.getAllStocks(id);
+
+    }
+}
