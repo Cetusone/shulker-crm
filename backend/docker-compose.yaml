@@ -9,4 +9,4 @@ services:
       POSTGRES_PASSWORD: 228kluevlox
       POSTGRES_DB: shulker_db
     ports:
-      - "5432:5432"
+      - "5433:5432"

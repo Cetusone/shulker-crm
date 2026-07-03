@@ -3,6 +3,7 @@ package com.cetus.shulkercrm.api.inventory;
 import com.cetus.shulkercrm.inventory.api.ProductServiceInterface;
 import com.cetus.shulkercrm.inventory.api.dto.ProductCreateRequest;
 import com.cetus.shulkercrm.inventory.api.dto.ProductResponse;
+import com.cetus.shulkercrm.api.exception.ProductNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,18 +36,30 @@ public class ProductController {
     @GetMapping("/{id}")
     public ProductResponse getProductById(@PathVariable long id) {
         log.info("getProductById {}",  id);
-        return productService.getProductById(id);
+        ProductResponse response = productService.getProductById(id);
+        if (response == null){
+            throw new ProductNotFoundException(id);
+        }
+        return response;
     }
 
-    @PutMapping
-    public ProductResponse updateProduct(@PathVariable long id, @RequestBody ProductCreateRequest request) {
+    @PutMapping("/{id}")
+<<<<<<< Updated upstream
+    public ProductResponse updateProduct(@PathVariable long id, @RequestBody @Valid ProductCreateRequest request) {
+=======
+    public ProductResponse updateProduct(@PathVariable long id, @Valid @RequestBody ProductCreateRequest request) {
+>>>>>>> Stashed changes
         log.info("updateProduct {}",  request);
-        return productService.updateProduct(id, request);
+        ProductResponse response = productService.updateProduct(id, request);
+        if (response == null) {
+            throw new ProductNotFoundException(id);
+        }
+        return response;
     }
 
-    @DeleteMapping
+    @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteProduct(@RequestParam long id) {
+    public void deleteProduct(@PathVariable long id) {
         log.info("deleteProduct {}",  id);
         productService.deleteProduct(id);
     }

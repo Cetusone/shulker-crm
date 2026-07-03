@@ -1,8 +1,11 @@
 package com.cetus.shulkercrm.api.inventory;
 
+import com.cetus.shulkercrm.inventory.api.StockServiceInterface;
 import com.cetus.shulkercrm.inventory.api.dto.StockCreateRequest;
 import com.cetus.shulkercrm.inventory.api.dto.StockResponse;
+import com.cetus.shulkercrm.api.exception.WarehouseNotFoundException;
 import com.cetus.shulkercrm.inventory.internal.service.StockService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -16,19 +19,26 @@ import java.util.List;
 @RequestMapping("/api/warehouse")
 public class StockController {
 
-    private final StockService stockService;
+    private final StockServiceInterface stockService;
 
     @PostMapping("/{id}/stock")
     @ResponseStatus(HttpStatus.CREATED)
-    public StockResponse addProductOnWarehouse(@PathVariable Long id, @RequestBody StockCreateRequest stockCreateRequest) {
+    public StockResponse addProductOnWarehouse(@PathVariable Long id, @RequestBody @Valid StockCreateRequest stockCreateRequest) {
         log.info("Adding product on Warehouse {}", id);
-        return stockService.addProductOnWarehouse(id, stockCreateRequest);
+        StockResponse response = stockService.addProductOnWarehouse(id, stockCreateRequest);
+        if (response == null) {
+            throw new WarehouseNotFoundException(id);
+        }
+        return response;
     }
 
     @GetMapping("/{id}/stock")
     public List<StockResponse> getAllStocks(@PathVariable Long id) {
         log.info("Getting stocks from Warehouse {}", id);
-        return stockService.getAllStocks(id);
-
+        List<StockResponse> stocks = stockService.getAllStocks(id);
+        if (stocks == null) {
+            throw new WarehouseNotFoundException(id);
+        }
+        return stocks;
     }
 }
