@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OwnWarehouseController {
 
-    OwnWarehouseServiceInterface ownWareHouseService;
+    private final OwnWarehouseServiceInterface ownWareHouseService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -47,6 +47,7 @@ public class OwnWarehouseController {
     @DeleteMapping("/{id}")
     public void deleteWareHouseById(@PathVariable Long id) {
         log.info("deleteWareHouseById {}", id);
+        ownWareHouseService.deleteWareHouseById(id);
     }
 
 }

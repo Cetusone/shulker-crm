@@ -38,15 +38,15 @@ public class ProductController {
         return productService.getProductById(id);
     }
 
-    @PutMapping
-    public ProductResponse updateProduct(@PathVariable long id, @RequestBody ProductCreateRequest request) {
+    @PutMapping("/{id}")
+    public ProductResponse updateProduct(@PathVariable long id, @RequestBody @Valid ProductCreateRequest request) {
         log.info("updateProduct {}",  request);
         return productService.updateProduct(id, request);
     }
 
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteProduct(@RequestParam long id) {
+    public void deleteProduct(@PathVariable long id) {
         log.info("deleteProduct {}",  id);
         productService.deleteProduct(id);
     }
