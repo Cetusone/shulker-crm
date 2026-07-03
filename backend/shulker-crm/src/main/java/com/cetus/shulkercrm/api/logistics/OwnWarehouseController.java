@@ -3,6 +3,7 @@ package com.cetus.shulkercrm.api.logistics;
 import com.cetus.shulkercrm.logistics.api.OwnWarehouseServiceInterface;
 import com.cetus.shulkercrm.logistics.api.dto.OwnWarehouseCreateRequest;
 import com.cetus.shulkercrm.logistics.api.dto.OwnWarehouseResponse;
+import com.cetus.shulkercrm.api.exception.WarehouseNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,16 +36,25 @@ public class OwnWarehouseController {
     @GetMapping("/{id}")
     public OwnWarehouseResponse getWareHouseById(@PathVariable Long id) {
         log.info("getWareHouseById {}", id);
-        return ownWareHouseService.getWarehouseById(id);
+        OwnWarehouseResponse response = ownWareHouseService.getWarehouseById(id);
+        if (response == null) {
+            throw new WarehouseNotFoundException(id);
+        }
+        return response;
     }
 
     @PutMapping("/{id}")
     public OwnWarehouseResponse updateWareHouseById(@PathVariable Long id, @RequestBody @Valid OwnWarehouseCreateRequest request) {
         log.info("updateWareHouseById {}, {}", id, request);
-        return ownWareHouseService.updateWarehouse(id, request);
+        OwnWarehouseResponse response = ownWareHouseService.updateWarehouse(id, request);
+        if (response == null) {
+            throw new WarehouseNotFoundException(id);
+        }
+        return response;
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteWareHouseById(@PathVariable Long id) {
         log.info("deleteWareHouseById {}", id);
         ownWareHouseService.deleteWareHouseById(id);

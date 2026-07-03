@@ -2,7 +2,7 @@ spring:
   application:
     name: shulker-srm
   datasource:
-    url: jdbc:postgresql://localhost:5432/shulker_db
+    url: jdbc:postgresql://localhost:5433/shulker_db
     username: shulker_user
     password: 228kluevlox
     driver-class-name: org.postgresql.Driver
