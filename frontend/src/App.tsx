@@ -1,4 +1,5 @@
 import {
+  ApiOutlined,
   AppstoreOutlined,
   CarOutlined,
   DatabaseOutlined,
@@ -6,12 +7,13 @@ import {
   PlusOutlined,
   ReloadOutlined,
   ShopOutlined,
+  TeamOutlined,
 } from '@ant-design/icons'
 import {
   Alert,
   Button,
+  Checkbox,
   ConfigProvider,
-  Drawer,
   Empty,
   Form,
   Input,
@@ -40,50 +42,31 @@ import {
   useLocation,
 } from 'react-router-dom'
 import './App.css'
+import type {
+  DeliveryPriority,
+  OwnWarehouseCreateRequest,
+  OwnWarehouseResponse,
+  PartnerCreateRequest,
+  PartnerResponse,
+  PartnerWarehouseCreateRequest,
+  PartnerWarehouseResponse,
+  ProductCharacteristic,
+  ProductCreateRequest,
+  ProductResponse,
+  StockResponse,
+  TransportCreateRequest,
+  TransportResponse,
+  TransportType,
+} from './types/api'
 
 const { Content, Header, Sider } = Layout
 const { Text, Title } = Typography
 
-type WarehouseType = 'OWN' | 'PARTNER'
-type TransportType = 'AUTO' | 'RAILWAY' | 'AVIATION'
-type DeliveryPriority = 'FASTEST' | 'CHEAPEST'
-
-type Product = {
-  id: number
-  name: string
-  description: string
-  sku: string
-  cargoUnitValue: number
-  cargoUnitType: 'UNIT'
-  characteristics: { attributeName: string; attributeValue: string }[]
-}
-
-type Warehouse = {
-  id: number
-  name: string
-  address: string
-  warehouseType: WarehouseType
-  latitude: number
-  longitude: number
-  isActive: boolean
-  transportIds: number[]
-}
-
-type Transport = {
-  id: number
-  name: string
-  transportType: TransportType
-  capacityCargoUnits: number
-  speedKmH: number
-  costPerKm: number
-}
-
-type Stock = {
-  id: number
-  warehouseId: number
+type StockFormValues = {
+  ownWarehouseId: number
   productId: number
   quantity: number
-  reservedQuantity: number
+  reason?: string
 }
 
 type DeliveryOption = {
@@ -95,25 +78,25 @@ type DeliveryOption = {
   transportName: string
   transportType: TransportType
   distanceKm: number
-  requiredCargoUnits: number
-  transportCapacityCargoUnits: number
+  requiredWeightKg: number
+  requiredVolumeM3: number
   tripsCount: number
   estimatedTimeHours: number
   estimatedCost: number
   availableQuantity: number
 }
 
-const initialProducts: Product[] = [
+const initialProducts: ProductResponse[] = [
   {
     id: 1,
     name: 'Ноутбук Apple MacBook',
-    description: 'Ноутбук для корпоративных клиентов',
+    description: 'Корпоративная партия ноутбуков',
     sku: 'APL-MAC-001',
-    cargoUnitValue: 1.5,
-    cargoUnitType: 'UNIT',
+    weightKg: 1.6,
+    volumeM3: 0.012,
     characteristics: [
-      { attributeName: 'brand', attributeValue: 'Apple' },
-      { attributeName: 'screen', attributeValue: '14' },
+      { id: 1, attributeName: 'brand', attributeValue: 'Apple' },
+      { id: 2, attributeName: 'screen', attributeValue: '14 inch' },
     ],
   },
   {
@@ -121,27 +104,28 @@ const initialProducts: Product[] = [
     name: 'Монитор Dell UltraSharp',
     description: 'Офисный монитор 27 дюймов',
     sku: 'DEL-MON-027',
-    cargoUnitValue: 2,
-    cargoUnitType: 'UNIT',
-    characteristics: [{ attributeName: 'diagonal', attributeValue: '27' }],
+    weightKg: 5.2,
+    volumeM3: 0.058,
+    characteristics: [{ id: 3, attributeName: 'diagonal', attributeValue: '27' }],
   },
   {
     id: 3,
     name: 'Короб кабелей HDMI',
     description: 'Партия кабелей для рабочих мест',
     sku: 'HDMI-BOX-100',
-    cargoUnitValue: 0.25,
-    cargoUnitType: 'UNIT',
-    characteristics: [{ attributeName: 'pack', attributeValue: '100 pcs' }],
+    weightKg: 14,
+    volumeM3: 0.04,
+    characteristics: [{ id: 4, attributeName: 'pack', attributeValue: '100 pcs' }],
   },
 ]
 
-const initialTransports: Transport[] = [
+const initialTransports: TransportResponse[] = [
   {
     id: 1,
     name: 'Авто 10 тонн',
     transportType: 'AUTO',
-    capacityCargoUnits: 100,
+    maxWeightKg: 10_000,
+    maxVolumeM3: 45,
     speedKmH: 80,
     costPerKm: 50,
   },
@@ -149,7 +133,8 @@ const initialTransports: Transport[] = [
     id: 2,
     name: 'Ж/Д контейнер',
     transportType: 'RAILWAY',
-    capacityCargoUnits: 800,
+    maxWeightKg: 26_000,
+    maxVolumeM3: 76,
     speedKmH: 60,
     costPerKm: 24,
   },
@@ -157,50 +142,88 @@ const initialTransports: Transport[] = [
     id: 3,
     name: 'Авиа срочная',
     transportType: 'AVIATION',
-    capacityCargoUnits: 180,
+    maxWeightKg: 3_200,
+    maxVolumeM3: 18,
     speedKmH: 680,
     costPerKm: 310,
   },
 ]
 
-const initialWarehouses: Warehouse[] = [
+const initialOwnWarehouses: OwnWarehouseResponse[] = [
   {
     id: 1,
     name: 'Склад Москва',
     address: 'Москва, ул. Складская, 1',
-    warehouseType: 'OWN',
     latitude: 55.7558,
     longitude: 37.6173,
     isActive: true,
-    transportIds: [1, 2, 3],
+    transports: [
+      { id: 1, transportType: 'AUTO', name: 'Авто 10 тонн' },
+      { id: 2, transportType: 'RAILWAY', name: 'Ж/Д контейнер' },
+      { id: 3, transportType: 'AVIATION', name: 'Авиа срочная' },
+    ],
   },
   {
     id: 2,
     name: 'Склад Санкт-Петербург',
     address: 'Санкт-Петербург, Московский пр., 5',
-    warehouseType: 'OWN',
     latitude: 59.9311,
     longitude: 30.3609,
     isActive: true,
-    transportIds: [1, 2],
-  },
-  {
-    id: 3,
-    name: 'Партнер Казань',
-    address: 'Казань, ул. Логистическая, 8',
-    warehouseType: 'PARTNER',
-    latitude: 55.7961,
-    longitude: 49.1064,
-    isActive: true,
-    transportIds: [1],
+    transports: [
+      { id: 1, transportType: 'AUTO', name: 'Авто 10 тонн' },
+      { id: 2, transportType: 'RAILWAY', name: 'Ж/Д контейнер' },
+    ],
   },
 ]
 
-const initialStocks: Stock[] = [
-  { id: 1, warehouseId: 1, productId: 1, quantity: 54, reservedQuantity: 4 },
-  { id: 2, warehouseId: 1, productId: 2, quantity: 35, reservedQuantity: 0 },
-  { id: 3, warehouseId: 2, productId: 1, quantity: 18, reservedQuantity: 2 },
-  { id: 4, warehouseId: 2, productId: 3, quantity: 430, reservedQuantity: 10 },
+const initialPartners: PartnerResponse[] = [
+  {
+    id: 1,
+    name: 'Kazan Logistics',
+    contactEmail: 'ops@kazan-logistics.test',
+    isActive: true,
+  },
+  {
+    id: 2,
+    name: 'Ural Trade Hub',
+    contactEmail: 'dispatch@ural-hub.test',
+    isActive: true,
+  },
+]
+
+const initialPartnerWarehouses: PartnerWarehouseResponse[] = [
+  {
+    id: 1,
+    partnerId: 1,
+    name: 'ПВЗ Казань',
+    address: 'Казань, ул. Логистическая, 8',
+    latitude: 55.7961,
+    longitude: 49.1064,
+    acceptsLand: true,
+    acceptsSea: false,
+    acceptsAir: true,
+    isActive: true,
+  },
+  {
+    id: 2,
+    partnerId: 2,
+    name: 'Терминал Екатеринбург',
+    address: 'Екатеринбург, ул. Транспортная, 17',
+    latitude: 56.8389,
+    longitude: 60.6057,
+    acceptsLand: true,
+    acceptsSea: false,
+    acceptsAir: false,
+    isActive: true,
+  },
+]
+
+const initialStocks: StockResponse[] = [
+  { id: 1, ownWarehouseId: 1, productId: 1, quantity: 54, reservedQuantity: 4 },
+  { id: 2, ownWarehouseId: 1, productId: 2, quantity: 35, reservedQuantity: 0 },
+  { id: 3, ownWarehouseId: 2, productId: 1, quantity: 18, reservedQuantity: 2 },
+  { id: 4, ownWarehouseId: 2, productId: 3, quantity: 430, reservedQuantity: 10 },
 ]
 
 const transportLabels: Record<TransportType, string> = {
@@ -209,326 +232,226 @@ const transportLabels: Record<TransportType, string> = {
   AVIATION: 'Авиа',
 }
 
-const warehouseLabels: Record<WarehouseType, string> = {
-  OWN: 'Наш',
-  PARTNER: 'Партнер',
-}
-
 const priorityLabels: Record<DeliveryPriority, string> = {
   CHEAPEST: 'Дешевле',
   FASTEST: 'Быстрее',
 }
 
-function distanceKm(from: Warehouse, to: Warehouse) {
-  const earthRadius = 6371
-  const toRad = (value: number) => (value * Math.PI) / 180
-  const dLat = toRad(to.latitude - from.latitude)
-  const dLon = toRad(to.longitude - from.longitude)
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(from.latitude)) *
-      Math.cos(toRad(to.latitude)) *
-      Math.sin(dLon / 2) ** 2
-  return Math.round(earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)))
+const endpointGroups = [
+  { label: 'Products', value: 'GET/POST /api/products' },
+  { label: 'Own warehouses', value: 'GET/POST /api/own-warehouses' },
+  { label: 'Transports', value: 'GET/POST /api/transports' },
+  { label: 'Partners', value: 'GET/POST /api/partners' },
+  {
+    label: 'Partner warehouses',
+    value: 'GET/POST /api/partners/{partnerId}/warehouses',
+  },
+  { label: 'Stock', value: 'GET/POST /api/warehouse/{id}/stock' },
+]
+
+function nextId<T extends { id: number }>(items: T[]) {
+  return items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1
 }
 
-function currency(value: number) {
+function formatNumber(value: number, fractionDigits = 2) {
   return new Intl.NumberFormat('ru-RU', {
-    maximumFractionDigits: 0,
-    style: 'currency',
-    currency: 'RUB',
+    maximumFractionDigits: fractionDigits,
   }).format(value)
 }
 
-function numberValue(value: number) {
-  return new Intl.NumberFormat('ru-RU', {
-    maximumFractionDigits: 2,
-  }).format(value)
-}
-
-function AppShell() {
-  const location = useLocation()
-  const [messageApi, contextHolder] = message.useMessage()
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses)
-  const [transports, setTransports] = useState<Transport[]>(initialTransports)
-  const [stocks, setStocks] = useState<Stock[]>(initialStocks)
-
-  const nextId = (items: { id: number }[]) =>
-    items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1
-
-  const calculateDelivery = (
-    productId: number,
-    quantity: number,
-    partnerWarehouseId: number,
-    priority: DeliveryPriority,
-  ): DeliveryOption[] => {
-    const product = products.find((item) => item.id === productId)
-    const partnerWarehouse = warehouses.find(
-      (item) => item.id === partnerWarehouseId && item.warehouseType === 'PARTNER',
-    )
-
-    if (!product || !partnerWarehouse || quantity <= 0) {
-      return []
-    }
-
-    const options = warehouses
-      .filter((warehouse) => warehouse.warehouseType === 'OWN' && warehouse.isActive)
-      .flatMap((warehouse) => {
-        const stock = stocks.find(
-          (item) => item.warehouseId === warehouse.id && item.productId === productId,
-        )
-        const availableQuantity = stock
-          ? stock.quantity - stock.reservedQuantity
-          : 0
-
-        if (availableQuantity < quantity) {
-          return []
-        }
-
-        const requiredCargoUnits = quantity * product.cargoUnitValue
-        const distance = distanceKm(warehouse, partnerWarehouse)
-
-        return warehouse.transportIds
-          .map((transportId) =>
-            transports.find((transport) => transport.id === transportId),
-          )
-          .filter((transport): transport is Transport => Boolean(transport))
-          .map((transport) => {
-            const tripsCount = Math.ceil(
-              requiredCargoUnits / transport.capacityCargoUnits,
-            )
-            return {
-              sourceWarehouseId: warehouse.id,
-              sourceWarehouseName: warehouse.name,
-              partnerWarehouseId: partnerWarehouse.id,
-              partnerWarehouseName: partnerWarehouse.name,
-              transportId: transport.id,
-              transportName: transport.name,
-              transportType: transport.transportType,
-              distanceKm: distance,
-              requiredCargoUnits,
-              transportCapacityCargoUnits: transport.capacityCargoUnits,
-              tripsCount,
-              estimatedTimeHours: Number(
-                ((distance / transport.speedKmH) * tripsCount).toFixed(2),
-              ),
-              estimatedCost: Math.round(
-                distance * transport.costPerKm * tripsCount,
-              ),
-              availableQuantity,
-            }
-          })
-      })
-
-    return options.sort((a, b) =>
-      priority === 'CHEAPEST'
-        ? a.estimatedCost - b.estimatedCost
-        : a.estimatedTimeHours - b.estimatedTimeHours,
-    )
+function parseCharacteristics(value?: string): ProductCharacteristic[] {
+  if (!value?.trim()) {
+    return []
   }
 
-  const summary = useMemo(
-    () => ({
-      products: products.length,
-      ownWarehouses: warehouses.filter((item) => item.warehouseType === 'OWN')
-        .length,
-      partnerWarehouses: warehouses.filter(
-        (item) => item.warehouseType === 'PARTNER',
-      ).length,
-      transports: transports.length,
-      stockRows: stocks.length,
-    }),
-    [products, warehouses, transports, stocks],
-  )
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [attributeName, ...rest] = line.split('=')
+      return {
+        attributeName: attributeName.trim(),
+        attributeValue: rest.join('=').trim() || '-',
+      }
+    })
+}
 
-  const menuItems = [
-    {
-      key: '/delivery',
-      icon: <NodeIndexOutlined />,
-      label: <Link to="/delivery">Расчет доставки</Link>,
-    },
-    {
-      key: '/products',
-      icon: <AppstoreOutlined />,
-      label: <Link to="/products">Товары</Link>,
-    },
-    {
-      key: '/warehouses',
-      icon: <ShopOutlined />,
-      label: <Link to="/warehouses">Склады</Link>,
-    },
-    {
-      key: '/transports',
-      icon: <CarOutlined />,
-      label: <Link to="/transports">Транспорт</Link>,
-    },
-    {
-      key: '/stocks',
-      icon: <DatabaseOutlined />,
-      label: <Link to="/stocks">Остатки</Link>,
-    },
-  ]
+function distanceKm(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+) {
+  const earthRadiusKm = 6371
+  const latitudeDelta = ((to.latitude - from.latitude) * Math.PI) / 180
+  const longitudeDelta = ((to.longitude - from.longitude) * Math.PI) / 180
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos((from.latitude * Math.PI) / 180) *
+      Math.cos((to.latitude * Math.PI) / 180) *
+      Math.sin(longitudeDelta / 2) ** 2
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
-  return (
-    <Layout className="app-shell">
-      {contextHolder}
-      <Sider breakpoint="lg" collapsedWidth="0" width={264} className="sider">
-        <div className="brand">
-          <div className="brand-mark">S</div>
-          <div>
-            <Text strong>Shulker SRM</Text>
-            <Text type="secondary">Warehouse CRM</Text>
-          </div>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          className="side-menu"
-        />
-      </Sider>
-      <Layout>
-        <Header className="topbar">
-          <div>
-            <Text type="secondary">API MVP</Text>
-            <Title level={3}>Панель управления складами</Title>
-          </div>
-          <Space wrap>
-            <Tag color="blue">/api/v1</Tag>
-            <Tag color="green">Mock data</Tag>
-          </Space>
-        </Header>
-        <Content className="content">
-          <section className="summary-grid">
-            <Statistic title="Товары" value={summary.products} />
-            <Statistic title="Наши склады" value={summary.ownWarehouses} />
-            <Statistic title="Партнеры" value={summary.partnerWarehouses} />
-            <Statistic title="Транспорт" value={summary.transports} />
-            <Statistic title="Остатки" value={summary.stockRows} />
-          </section>
-          <Routes>
-            <Route path="/" element={<Navigate to="/delivery" replace />} />
-            <Route
-              path="/delivery"
-              element={
-                <DeliveryPage
-                  products={products}
-                  warehouses={warehouses}
-                  calculateDelivery={calculateDelivery}
-                />
-              }
-            />
-            <Route
-              path="/products"
-              element={
-                <ProductsPage
-                  products={products}
-                  addProduct={(values) => {
-                    setProducts((items) => [
-                      ...items,
-                      {
-                        id: nextId(items),
-                        cargoUnitType: 'UNIT',
-                        characteristics: [],
-                        ...values,
-                      },
-                    ])
-                    messageApi.success('Товар добавлен')
-                  }}
-                />
-              }
-            />
-            <Route
-              path="/warehouses"
-              element={
-                <WarehousesPage
-                  warehouses={warehouses}
-                  transports={transports}
-                  addWarehouse={(values) => {
-                    setWarehouses((items) => [
-                      ...items,
-                      { id: nextId(items), isActive: true, transportIds: [], ...values },
-                    ])
-                    messageApi.success('Склад добавлен')
-                  }}
-                />
-              }
-            />
-            <Route
-              path="/transports"
-              element={
-                <TransportsPage
-                  transports={transports}
-                  addTransport={(values) => {
-                    setTransports((items) => [...items, { id: nextId(items), ...values }])
-                    messageApi.success('Транспорт добавлен')
-                  }}
-                />
-              }
-            />
-            <Route
-              path="/stocks"
-              element={
-                <StocksPage
-                  products={products}
-                  warehouses={warehouses}
-                  stocks={stocks}
-                  replenishStock={(values) => {
-                    setStocks((items) => {
-                      const existing = items.find(
-                        (item) =>
-                          item.productId === values.productId &&
-                          item.warehouseId === values.warehouseId,
-                      )
-                      if (!existing) {
-                        return [
-                          ...items,
-                          {
-                            id: nextId(items),
-                            productId: values.productId,
-                            warehouseId: values.warehouseId,
-                            quantity: values.quantity,
-                            reservedQuantity: 0,
-                          },
-                        ]
-                      }
+function isTransportAccepted(
+  transportType: TransportType,
+  warehouse: PartnerWarehouseResponse,
+) {
+  if (transportType === 'AVIATION') {
+    return warehouse.acceptsAir
+  }
 
-                      return items.map((item) =>
-                        item.id === existing.id
-                          ? { ...item, quantity: item.quantity + values.quantity }
-                          : item,
-                      )
-                    })
-                    messageApi.success('Остаток пополнен')
-                  }}
-                />
-              }
-            />
-          </Routes>
-        </Content>
-      </Layout>
-    </Layout>
-  )
+  return warehouse.acceptsLand
+}
+
+function EndpointTag({ value }: { value: string }) {
+  return <Tag color="blue">{value}</Tag>
 }
 
 function PageHeader({
   title,
   endpoint,
-  action,
+  description,
 }: {
   title: string
   endpoint: string
-  action?: React.ReactNode
+  description: string
 }) {
   return (
     <div className="page-header">
       <div>
         <Title level={4}>{title}</Title>
-        <Text code>{endpoint}</Text>
+        <Text type="secondary">{description}</Text>
       </div>
-      {action}
+      <EndpointTag value={endpoint} />
     </div>
+  )
+}
+
+function AppMenu() {
+  const location = useLocation()
+
+  return (
+    <Menu
+      className="side-menu"
+      mode="inline"
+      selectedKeys={[location.pathname]}
+      items={[
+        {
+          key: '/',
+          icon: <AppstoreOutlined />,
+          label: <Link to="/">Сводка</Link>,
+        },
+        {
+          key: '/products',
+          icon: <DatabaseOutlined />,
+          label: <Link to="/products">Товары</Link>,
+        },
+        {
+          key: '/own-warehouses',
+          icon: <ShopOutlined />,
+          label: <Link to="/own-warehouses">Наши склады</Link>,
+        },
+        {
+          key: '/partners',
+          icon: <TeamOutlined />,
+          label: <Link to="/partners">Партнеры</Link>,
+        },
+        {
+          key: '/partner-warehouses',
+          icon: <ShopOutlined />,
+          label: <Link to="/partner-warehouses">Склады партнеров</Link>,
+        },
+        {
+          key: '/transports',
+          icon: <CarOutlined />,
+          label: <Link to="/transports">Транспорт</Link>,
+        },
+        {
+          key: '/stocks',
+          icon: <DatabaseOutlined />,
+          label: <Link to="/stocks">Остатки</Link>,
+        },
+        {
+          key: '/delivery',
+          icon: <NodeIndexOutlined />,
+          label: <Link to="/delivery">Расчет доставки</Link>,
+        },
+      ]}
+    />
+  )
+}
+
+function Dashboard({
+  products,
+  transports,
+  ownWarehouses,
+  partners,
+  partnerWarehouses,
+  stocks,
+}: {
+  products: ProductResponse[]
+  transports: TransportResponse[]
+  ownWarehouses: OwnWarehouseResponse[]
+  partners: PartnerResponse[]
+  partnerWarehouses: PartnerWarehouseResponse[]
+  stocks: StockResponse[]
+}) {
+  return (
+    <>
+      <div className="summary-grid">
+        <Statistic title="Товары" value={products.length} />
+        <Statistic title="Наши склады" value={ownWarehouses.length} />
+        <Statistic title="Партнеры" value={partners.length} />
+        <Statistic title="Склады партнеров" value={partnerWarehouses.length} />
+        <Statistic title="Позиций на остатках" value={stocks.length} />
+      </div>
+
+      <div className="panel field-block">
+        <Space direction="vertical" size={12} className="full-width">
+          <Alert
+            type="warning"
+            showIcon
+            message="Backend пока требует фикс сборки"
+            description="В актуальном main в ProductController.java остались conflict markers. Фронт обновлен под контракт, но live-подключение лучше проверять после backend-fix."
+          />
+          <Alert
+            type="info"
+            showIcon
+            message="Vite proxy настроен"
+            description="Фронт может ходить на /api, а Vite прокинет запросы на http://localhost:8080. Это уменьшает риск CORS-блокировки в браузере."
+          />
+        </Space>
+      </div>
+
+      <div className="workspace">
+        <div className="panel">
+          <Title level={5}>Актуальный API-контур</Title>
+          <Space direction="vertical" size={10}>
+            {endpointGroups.map((item) => (
+              <div key={item.value} className="endpoint-row">
+                <Text strong>{item.label}</Text>
+                <EndpointTag value={item.value} />
+              </div>
+            ))}
+          </Space>
+        </div>
+
+        <div className="panel">
+          <Title level={5}>Следующий полезный шаг</Title>
+          <Text>
+            После фикса backend-сборки можно заменить mock-данные на React Query и
+            подключить списки GET: products, transports, own warehouses, partners.
+          </Text>
+          <div className="metric-row">
+            <Statistic title="Транспортов" value={transports.length} />
+            <Statistic
+              title="Общий остаток"
+              value={stocks.reduce((sum, item) => sum + item.quantity, 0)}
+            />
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -536,113 +459,36 @@ function ProductsPage({
   products,
   addProduct,
 }: {
-  products: Product[]
-  addProduct: (values: Omit<Product, 'id' | 'cargoUnitType' | 'characteristics'>) => void
+  products: ProductResponse[]
+  addProduct: (values: ProductCreateRequest) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [form] = Form.useForm()
-  const columns: TableProps<Product>['columns'] = [
-    { title: 'Название', dataIndex: 'name' },
-    { title: 'SKU', dataIndex: 'sku', width: 180 },
-    {
-      title: 'Грузоместо',
-      dataIndex: 'cargoUnitValue',
-      width: 140,
-      render: (value) => `${numberValue(value)} UNIT`,
-    },
-    { title: 'Описание', dataIndex: 'description' },
-  ]
+  const [form] = Form.useForm<ProductCreateRequest & { characteristicsText?: string }>()
 
-  return (
-    <>
-      <PageHeader
-        title="Товары"
-        endpoint="GET /api/v1/products"
-        action={
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => setOpen(true)}>
-            Создать
-          </Button>
-        }
-      />
-      <Table rowKey="id" columns={columns} dataSource={products} pagination={{ pageSize: 6 }} />
-      <Drawer
-        title="POST /api/v1/products"
-        open={open}
-        onClose={() => setOpen(false)}
-        width={440}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={(values) => {
-            addProduct(values)
-            form.resetFields()
-            setOpen(false)
-          }}
-        >
-          <Form.Item name="name" label="Название" rules={[{ required: true, min: 2 }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="sku" label="SKU" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="description" label="Описание" rules={[{ required: true }]}>
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item
-            name="cargoUnitValue"
-            label="Грузоместо, UNIT"
-            rules={[{ required: true }]}
-          >
-            <InputNumber min={0.01} step={0.25} className="full-width" />
-          </Form.Item>
-          <Button htmlType="submit" type="primary" block>
-            Сохранить
-          </Button>
-        </Form>
-      </Drawer>
-    </>
-  )
-}
-
-function WarehousesPage({
-  warehouses,
-  transports,
-  addWarehouse,
-}: {
-  warehouses: Warehouse[]
-  transports: Transport[]
-  addWarehouse: (
-    values: Omit<Warehouse, 'id' | 'isActive' | 'transportIds'>,
-  ) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [form] = Form.useForm()
-  const columns: TableProps<Warehouse>['columns'] = [
+  const columns: TableProps<ProductResponse>['columns'] = [
+    { title: 'SKU', dataIndex: 'sku', width: 140 },
     { title: 'Название', dataIndex: 'name' },
     {
-      title: 'Тип',
-      dataIndex: 'warehouseType',
+      title: 'Вес',
+      dataIndex: 'weightKg',
+      render: (value: number) => `${formatNumber(value)} кг`,
       width: 120,
-      render: (value: WarehouseType) => (
-        <Tag color={value === 'OWN' ? 'blue' : 'purple'}>{warehouseLabels[value]}</Tag>
-      ),
-    },
-    { title: 'Адрес', dataIndex: 'address' },
-    {
-      title: 'Координаты',
-      width: 170,
-      render: (_, record) => `${record.latitude}, ${record.longitude}`,
     },
     {
-      title: 'Транспорт',
-      width: 220,
-      render: (_, record) => (
+      title: 'Объем',
+      dataIndex: 'volumeM3',
+      render: (value: number) => `${formatNumber(value, 3)} м³`,
+      width: 120,
+    },
+    {
+      title: 'Характеристики',
+      dataIndex: 'characteristics',
+      render: (value: ProductCharacteristic[]) => (
         <Space wrap>
-          {record.transportIds.map((id) => {
-            const transport = transports.find((item) => item.id === id)
-            return transport ? <Tag key={id}>{transportLabels[transport.transportType]}</Tag> : null
-          })}
+          {value.map((item) => (
+            <Tag key={`${item.attributeName}-${item.attributeValue}`}>
+              {item.attributeName}: {item.attributeValue}
+            </Tag>
+          ))}
         </Space>
       ),
     },
@@ -651,62 +497,61 @@ function WarehousesPage({
   return (
     <>
       <PageHeader
-        title="Склады"
-        endpoint="GET /api/v1/warehouses?type=OWN&active=true"
-        action={
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => setOpen(true)}>
-            Создать
-          </Button>
-        }
+        title="Товары"
+        endpoint="GET/POST /api/products"
+        description="Форма и таблица синхронизированы с ProductCreateRequest и ProductResponse."
       />
-      <Table rowKey="id" columns={columns} dataSource={warehouses} pagination={{ pageSize: 6 }} />
-      <Drawer
-        title="POST /api/v1/warehouses"
-        open={open}
-        onClose={() => setOpen(false)}
-        width={440}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ warehouseType: 'OWN' }}
-          onFinish={(values) => {
-            addWarehouse(values)
-            form.resetFields()
-            setOpen(false)
-          }}
-        >
-          <Form.Item name="name" label="Название" rules={[{ required: true, min: 2 }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="address" label="Адрес" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="warehouseType" label="Тип" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: 'OWN', label: 'Наш склад' },
-                { value: 'PARTNER', label: 'Склад партнера' },
-              ]}
-            />
-          </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="latitude" label="Широта" rules={[{ required: true }]}>
-                <InputNumber min={-90} max={90} className="full-width" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="longitude" label="Долгота" rules={[{ required: true }]}>
-                <InputNumber min={-180} max={180} className="full-width" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Button htmlType="submit" type="primary" block>
-            Сохранить
-          </Button>
-        </Form>
-      </Drawer>
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Создать товар</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={(values) => {
+              addProduct({
+                ...values,
+                characteristics: parseCharacteristics(values.characteristicsText),
+              })
+              form.resetFields()
+            }}
+          >
+            <Form.Item name="name" label="Название" rules={[{ required: true }]}>
+              <Input placeholder="Монитор Dell UltraSharp" />
+            </Form.Item>
+            <Form.Item name="sku" label="SKU" rules={[{ required: true }]}>
+              <Input placeholder="DEL-MON-027" />
+            </Form.Item>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="weightKg" label="Вес, кг" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={0.01} step={0.1} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="volumeM3" label="Объем, м³" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={0.001} step={0.001} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item name="description" label="Описание">
+              <Input.TextArea rows={3} />
+            </Form.Item>
+            <Form.Item name="characteristicsText" label="Характеристики">
+              <Input.TextArea rows={4} placeholder={'brand=Apple\nscreen=14 inch'} />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Создать товар
+            </Button>
+          </Form>
+        </div>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={products}
+          pagination={false}
+          scroll={{ x: 900 }}
+        />
+      </div>
     </>
   )
 }
@@ -715,260 +560,573 @@ function TransportsPage({
   transports,
   addTransport,
 }: {
-  transports: Transport[]
-  addTransport: (values: Omit<Transport, 'id'>) => void
+  transports: TransportResponse[]
+  addTransport: (values: TransportCreateRequest) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [form] = Form.useForm()
-  const columns: TableProps<Transport>['columns'] = [
-    { title: 'Название', dataIndex: 'name' },
+  const [form] = Form.useForm<TransportCreateRequest>()
+
+  const columns: TableProps<TransportResponse>['columns'] = [
     {
       title: 'Тип',
       dataIndex: 'transportType',
-      width: 120,
       render: (value: TransportType) => <Tag>{transportLabels[value]}</Tag>,
+      width: 110,
     },
-    { title: 'Вместимость', dataIndex: 'capacityCargoUnits', render: (value) => `${value} UNIT` },
-    { title: 'Скорость', dataIndex: 'speedKmH', render: (value) => `${value} км/ч` },
-    { title: 'Стоимость', dataIndex: 'costPerKm', render: (value) => `${currency(value)} / км` },
+    { title: 'Название', dataIndex: 'name' },
+    {
+      title: 'Грузоподъемность',
+      dataIndex: 'maxWeightKg',
+      render: (value: number) => `${formatNumber(value, 0)} кг`,
+    },
+    {
+      title: 'Объем',
+      dataIndex: 'maxVolumeM3',
+      render: (value: number) => `${formatNumber(value)} м³`,
+    },
+    {
+      title: 'Скорость',
+      dataIndex: 'speedKmH',
+      render: (value: number) => `${formatNumber(value, 0)} км/ч`,
+    },
+    {
+      title: 'Цена',
+      dataIndex: 'costPerKm',
+      render: (value: number) => `${formatNumber(value, 0)} / км`,
+    },
   ]
 
   return (
     <>
       <PageHeader
         title="Транспорт"
-        endpoint="GET /api/v1/transports?type=AUTO"
-        action={
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => setOpen(true)}>
-            Создать
-          </Button>
-        }
+        endpoint="GET/POST /api/transports"
+        description="Вместимость теперь хранится как maxWeightKg и maxVolumeM3."
       />
-      <Table rowKey="id" columns={columns} dataSource={transports} pagination={false} />
-      <Drawer
-        title="POST /api/v1/transports"
-        open={open}
-        onClose={() => setOpen(false)}
-        width={440}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{ transportType: 'AUTO' }}
-          onFinish={(values) => {
-            addTransport(values)
-            form.resetFields()
-            setOpen(false)
-          }}
-        >
-          <Form.Item name="name" label="Название" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="transportType" label="Тип" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: 'AUTO', label: 'Авто' },
-                { value: 'RAILWAY', label: 'Ж/Д' },
-                { value: 'AVIATION', label: 'Авиа' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name="capacityCargoUnits"
-            label="Вместимость, UNIT"
-            rules={[{ required: true }]}
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Создать транспорт</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ transportType: 'AUTO' }}
+            onFinish={(values) => {
+              addTransport(values)
+              form.resetFields()
+            }}
           >
-            <InputNumber min={1} className="full-width" />
-          </Form.Item>
-          <Form.Item name="speedKmH" label="Скорость, км/ч" rules={[{ required: true }]}>
-            <InputNumber min={1} className="full-width" />
-          </Form.Item>
-          <Form.Item name="costPerKm" label="Стоимость за км" rules={[{ required: true }]}>
-            <InputNumber min={1} className="full-width" />
-          </Form.Item>
-          <Button htmlType="submit" type="primary" block>
-            Сохранить
-          </Button>
-        </Form>
-      </Drawer>
+            <Form.Item name="transportType" label="Тип" rules={[{ required: true }]}>
+              <Select
+                options={Object.entries(transportLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="name" label="Название" rules={[{ required: true }]}>
+              <Input placeholder="Авто 10 тонн" />
+            </Form.Item>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item
+                  name="maxWeightKg"
+                  label="Макс. вес, кг"
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber className="full-width" min={1} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="maxVolumeM3"
+                  label="Макс. объем, м³"
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber className="full-width" min={0.1} step={0.1} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="speedKmH" label="Скорость" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={1} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="costPerKm" label="Цена за км" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={1} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Создать транспорт
+            </Button>
+          </Form>
+        </div>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={transports}
+          pagination={false}
+          scroll={{ x: 900 }}
+        />
+      </div>
     </>
   )
 }
 
-function StocksPage({
-  products,
+function OwnWarehousesPage({
   warehouses,
-  stocks,
-  replenishStock,
+  transports,
+  addWarehouse,
 }: {
-  products: Product[]
-  warehouses: Warehouse[]
-  stocks: Stock[]
-  replenishStock: (values: { warehouseId: number; productId: number; quantity: number }) => void
+  warehouses: OwnWarehouseResponse[]
+  transports: TransportResponse[]
+  addWarehouse: (values: OwnWarehouseCreateRequest) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [form] = Form.useForm()
-  const rows = stocks.map((stock) => {
-    const product = products.find((item) => item.id === stock.productId)
-    const warehouse = warehouses.find((item) => item.id === stock.warehouseId)
-    return {
-      ...stock,
-      productName: product?.name ?? 'Неизвестный товар',
-      sku: product?.sku ?? '-',
-      warehouseName: warehouse?.name ?? 'Неизвестный склад',
-      availableQuantity: stock.quantity - stock.reservedQuantity,
-    }
-  })
+  const [form] = Form.useForm<OwnWarehouseCreateRequest>()
 
-  const columns: TableProps<(typeof rows)[number]>['columns'] = [
-    { title: 'Склад', dataIndex: 'warehouseName' },
-    { title: 'Товар', dataIndex: 'productName' },
-    { title: 'SKU', dataIndex: 'sku', width: 160 },
-    { title: 'Количество', dataIndex: 'quantity', width: 130 },
-    { title: 'Резерв', dataIndex: 'reservedQuantity', width: 110 },
+  const columns: TableProps<OwnWarehouseResponse>['columns'] = [
+    { title: 'Название', dataIndex: 'name' },
+    { title: 'Адрес', dataIndex: 'address' },
     {
-      title: 'Доступно',
-      dataIndex: 'availableQuantity',
-      width: 120,
-      render: (value) => <Text strong>{value}</Text>,
+      title: 'Координаты',
+      render: (_, item) => `${item.latitude}, ${item.longitude}`,
+      width: 190,
+    },
+    {
+      title: 'Транспорт',
+      dataIndex: 'transports',
+      render: (value: OwnWarehouseResponse['transports']) => (
+        <Space wrap>
+          {value.map((item) => (
+            <Tag key={item.id}>{transportLabels[item.transportType]}</Tag>
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'isActive',
+      render: (value: boolean) => (
+        <Tag color={value ? 'green' : 'default'}>{value ? 'Активен' : 'Архив'}</Tag>
+      ),
+      width: 110,
     },
   ]
 
   return (
     <>
       <PageHeader
-        title="Остатки"
-        endpoint="GET /api/v1/warehouses/{id}/stock"
-        action={
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => setOpen(true)}>
-            Пополнить
-          </Button>
-        }
+        title="Наши склады"
+        endpoint="GET/POST /api/own-warehouses"
+        description="Создание требует хотя бы один transportId, как в backend validation."
       />
-      <Table rowKey="id" columns={columns} dataSource={rows} pagination={{ pageSize: 6 }} />
-      <Drawer
-        title="POST /api/v1/warehouses/{id}/stock"
-        open={open}
-        onClose={() => setOpen(false)}
-        width={440}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={(values) => {
-            replenishStock(values)
-            form.resetFields()
-            setOpen(false)
-          }}
-        >
-          <Form.Item name="warehouseId" label="Склад" rules={[{ required: true }]}>
-            <Select
-              options={warehouses
-                .filter((item) => item.warehouseType === 'OWN' && item.isActive)
-                .map((item) => ({ value: item.id, label: item.name }))}
-            />
-          </Form.Item>
-          <Form.Item name="productId" label="Товар" rules={[{ required: true }]}>
-            <Select options={products.map((item) => ({ value: item.id, label: item.name }))} />
-          </Form.Item>
-          <Form.Item name="quantity" label="Количество" rules={[{ required: true }]}>
-            <InputNumber min={1} className="full-width" />
-          </Form.Item>
-          <Button htmlType="submit" type="primary" block>
-            Пополнить
-          </Button>
-        </Form>
-      </Drawer>
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Создать склад</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={(values) => {
+              addWarehouse(values)
+              form.resetFields()
+            }}
+          >
+            <Form.Item name="name" label="Название" rules={[{ required: true }]}>
+              <Input placeholder="Склад Москва" />
+            </Form.Item>
+            <Form.Item name="address" label="Адрес">
+              <Input placeholder="Москва, ул. Складская, 1" />
+            </Form.Item>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="latitude" label="Широта" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={-90} max={90} step={0.0001} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="longitude" label="Долгота" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={-180} max={180} step={0.0001} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item
+              name="transportIds"
+              label="Доступный транспорт"
+              rules={[{ required: true }]}
+            >
+              <Select
+                mode="multiple"
+                options={transports.map((item) => ({
+                  value: item.id,
+                  label: `${transportLabels[item.transportType]} - ${item.name}`,
+                }))}
+              />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Создать склад
+            </Button>
+          </Form>
+        </div>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={warehouses}
+          pagination={false}
+          scroll={{ x: 1000 }}
+        />
+      </div>
+    </>
+  )
+}
+
+function PartnersPage({
+  partners,
+  addPartner,
+}: {
+  partners: PartnerResponse[]
+  addPartner: (values: PartnerCreateRequest) => void
+}) {
+  const [form] = Form.useForm<PartnerCreateRequest>()
+
+  const columns: TableProps<PartnerResponse>['columns'] = [
+    { title: 'Компания', dataIndex: 'name' },
+    { title: 'Email', dataIndex: 'contactEmail' },
+    {
+      title: 'Статус',
+      dataIndex: 'isActive',
+      render: (value: boolean) => (
+        <Tag color={value ? 'green' : 'default'}>{value ? 'Активен' : 'Отключен'}</Tag>
+      ),
+      width: 120,
+    },
+  ]
+
+  return (
+    <>
+      <PageHeader
+        title="Партнеры"
+        endpoint="GET/POST /api/partners"
+        description="Новый backend-модуль. API key отправляется только в request."
+      />
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Создать партнера</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ isActive: true }}
+            onFinish={(values) => {
+              addPartner(values)
+              form.resetFields()
+            }}
+          >
+            <Form.Item name="name" label="Компания" rules={[{ required: true }]}>
+              <Input placeholder="Kazan Logistics" />
+            </Form.Item>
+            <Form.Item name="apiKey" label="API key" rules={[{ required: true }]}>
+              <Input.Password placeholder="partner-api-key" />
+            </Form.Item>
+            <Form.Item name="contactEmail" label="Email">
+              <Input placeholder="ops@example.com" />
+            </Form.Item>
+            <Form.Item name="isActive" valuePropName="checked">
+              <Checkbox>Активен</Checkbox>
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Создать партнера
+            </Button>
+          </Form>
+        </div>
+        <Table rowKey="id" columns={columns} dataSource={partners} pagination={false} />
+      </div>
+    </>
+  )
+}
+
+function PartnerWarehousesPage({
+  partners,
+  warehouses,
+  addWarehouse,
+}: {
+  partners: PartnerResponse[]
+  warehouses: PartnerWarehouseResponse[]
+  addWarehouse: (values: PartnerWarehouseCreateRequest) => void
+}) {
+  const [form] = Form.useForm<PartnerWarehouseCreateRequest>()
+
+  const columns: TableProps<PartnerWarehouseResponse>['columns'] = [
+    { title: 'Название', dataIndex: 'name' },
+    {
+      title: 'Партнер',
+      dataIndex: 'partnerId',
+      render: (value: number) => partners.find((item) => item.id === value)?.name ?? value,
+    },
+    { title: 'Адрес', dataIndex: 'address' },
+    {
+      title: 'Принимает',
+      render: (_, item) => (
+        <Space wrap>
+          {item.acceptsLand && <Tag>Наземный</Tag>}
+          {item.acceptsSea && <Tag>Морской</Tag>}
+          {item.acceptsAir && <Tag>Авиа</Tag>}
+        </Space>
+      ),
+      width: 210,
+    },
+    {
+      title: 'Статус',
+      dataIndex: 'isActive',
+      render: (value: boolean) => (
+        <Tag color={value ? 'green' : 'default'}>{value ? 'Активен' : 'Отключен'}</Tag>
+      ),
+      width: 120,
+    },
+  ]
+
+  return (
+    <>
+      <PageHeader
+        title="Склады партнеров"
+        endpoint="GET/POST /api/partners/{partnerId}/warehouses"
+        description="Отдельная сущность partner warehouses с флагами acceptsLand, acceptsSea, acceptsAir."
+      />
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Создать склад партнера</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ acceptsLand: true, acceptsSea: false, acceptsAir: false }}
+            onFinish={(values) => {
+              addWarehouse(values)
+              form.resetFields()
+            }}
+          >
+            <Form.Item name="partnerId" label="Партнер" rules={[{ required: true }]}>
+              <Select
+                options={partners.map((item) => ({ value: item.id, label: item.name }))}
+              />
+            </Form.Item>
+            <Form.Item name="name" label="Название" rules={[{ required: true }]}>
+              <Input placeholder="ПВЗ Казань" />
+            </Form.Item>
+            <Form.Item name="address" label="Адрес">
+              <Input placeholder="Казань, ул. Логистическая, 8" />
+            </Form.Item>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="latitude" label="Широта" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={-90} max={90} step={0.0001} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="longitude" label="Долгота" rules={[{ required: true }]}>
+                  <InputNumber className="full-width" min={-180} max={180} step={0.0001} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Space direction="vertical">
+              <Form.Item name="acceptsLand" valuePropName="checked">
+                <Checkbox>Наземный транспорт</Checkbox>
+              </Form.Item>
+              <Form.Item name="acceptsSea" valuePropName="checked">
+                <Checkbox>Морской транспорт</Checkbox>
+              </Form.Item>
+              <Form.Item name="acceptsAir" valuePropName="checked">
+                <Checkbox>Авиа транспорт</Checkbox>
+              </Form.Item>
+            </Space>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Создать склад партнера
+            </Button>
+          </Form>
+        </div>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={warehouses}
+          pagination={false}
+          scroll={{ x: 900 }}
+        />
+      </div>
+    </>
+  )
+}
+
+function StocksPage({
+  stocks,
+  products,
+  warehouses,
+  addStock,
+}: {
+  stocks: StockResponse[]
+  products: ProductResponse[]
+  warehouses: OwnWarehouseResponse[]
+  addStock: (values: StockFormValues) => void
+}) {
+  const [form] = Form.useForm<StockFormValues>()
+
+  const rows = stocks.map((item) => ({
+    ...item,
+    productName: products.find((product) => product.id === item.productId)?.name ?? item.productId,
+    warehouseName:
+      warehouses.find((warehouse) => warehouse.id === item.ownWarehouseId)?.name ??
+      item.ownWarehouseId,
+  }))
+
+  const columns: TableProps<(typeof rows)[number]>['columns'] = [
+    { title: 'Склад', dataIndex: 'warehouseName' },
+    { title: 'Товар', dataIndex: 'productName' },
+    { title: 'Количество', dataIndex: 'quantity', width: 130 },
+    { title: 'Резерв', dataIndex: 'reservedQuantity', width: 100 },
+  ]
+
+  return (
+    <>
+      <PageHeader
+        title="Остатки"
+        endpoint="GET/POST /api/warehouse/{id}/stock"
+        description="Backend добавляет товар на конкретный наш склад через id склада в path."
+      />
+      <div className="workspace">
+        <div className="panel form-panel">
+          <Title level={5}>Приемка товара</Title>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={(values) => {
+              addStock(values)
+              form.resetFields()
+            }}
+          >
+            <Form.Item name="ownWarehouseId" label="Склад" rules={[{ required: true }]}>
+              <Select
+                options={warehouses.map((item) => ({ value: item.id, label: item.name }))}
+              />
+            </Form.Item>
+            <Form.Item name="productId" label="Товар" rules={[{ required: true }]}>
+              <Select
+                options={products.map((item) => ({
+                  value: item.id,
+                  label: `${item.sku} - ${item.name}`,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="quantity" label="Количество" rules={[{ required: true }]}>
+              <InputNumber className="full-width" min={1} />
+            </Form.Item>
+            <Form.Item name="reason" label="Причина">
+              <Input placeholder="Поставка, инвентаризация, корректировка" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
+              Добавить остаток
+            </Button>
+          </Form>
+        </div>
+        <Table rowKey="id" columns={columns} dataSource={rows} pagination={false} />
+      </div>
     </>
   )
 }
 
 function DeliveryPage({
   products,
-  warehouses,
-  calculateDelivery,
+  transports,
+  ownWarehouses,
+  partnerWarehouses,
+  stocks,
 }: {
-  products: Product[]
-  warehouses: Warehouse[]
-  calculateDelivery: (
-    productId: number,
-    quantity: number,
-    partnerWarehouseId: number,
-    priority: DeliveryPriority,
-  ) => DeliveryOption[]
+  products: ProductResponse[]
+  transports: TransportResponse[]
+  ownWarehouses: OwnWarehouseResponse[]
+  partnerWarehouses: PartnerWarehouseResponse[]
+  stocks: StockResponse[]
 }) {
-  const [form] = Form.useForm()
   const [priority, setPriority] = useState<DeliveryPriority>('CHEAPEST')
   const [options, setOptions] = useState<DeliveryOption[]>([])
-  const partnerWarehouses = warehouses.filter(
-    (item) => item.warehouseType === 'PARTNER' && item.isActive,
-  )
+  const [form] = Form.useForm<{
+    productId: number
+    quantity: number
+    partnerWarehouseId: number
+  }>()
 
   const columns: TableProps<DeliveryOption>['columns'] = [
-    {
-      title: '#',
-      width: 64,
-      render: (_, __, index) => <Text strong>{index + 1}</Text>,
-    },
-    { title: 'Склад-источник', dataIndex: 'sourceWarehouseName' },
+    { title: 'Наш склад', dataIndex: 'sourceWarehouseName' },
+    { title: 'Склад партнера', dataIndex: 'partnerWarehouseName' },
     {
       title: 'Транспорт',
-      render: (_, record) => (
-        <Space>
-          <Tag>{transportLabels[record.transportType]}</Tag>
-          <Text>{record.transportName}</Text>
-        </Space>
-      ),
+      render: (_, item) => `${transportLabels[item.transportType]} - ${item.transportName}`,
     },
-    { title: 'Расстояние', dataIndex: 'distanceKm', render: (value) => `${value} км` },
     {
-      title: 'Груз',
-      dataIndex: 'requiredCargoUnits',
-      render: (value) => `${numberValue(value)} UNIT`,
+      title: 'Дистанция',
+      dataIndex: 'distanceKm',
+      render: (value: number) => `${formatNumber(value, 0)} км`,
     },
-    { title: 'Рейсы', dataIndex: 'tripsCount' },
+    { title: 'Рейсы', dataIndex: 'tripsCount', width: 90 },
     {
       title: 'Время',
       dataIndex: 'estimatedTimeHours',
-      render: (value) => `${numberValue(value)} ч`,
+      render: (value: number) => `${formatNumber(value, 1)} ч`,
     },
     {
       title: 'Стоимость',
       dataIndex: 'estimatedCost',
-      render: (value) => <Text strong>{currency(value)}</Text>,
+      render: (value: number) => `${formatNumber(value, 0)}`,
     },
   ]
 
   return (
     <>
-      <PageHeader title="Расчет доставки" endpoint="POST /api/v1/delivery/calculate" />
-      <section className="workspace">
+      <PageHeader
+        title="Расчет доставки"
+        endpoint="POST /api/delivery/calculate"
+        description="Пока backend endpoint не найден, расчет оставлен как frontend-mock по новым сущностям."
+      />
+      <Alert
+        className="field-block"
+        type="info"
+        showIcon
+        message="Ожидает backend API"
+        description="Экран уже использует products, own warehouses, partner warehouses, transports и stocks. Когда появится routing endpoint, форму можно переключить на один POST request."
+      />
+      <div className="workspace">
         <div className="panel form-panel">
-          <Title level={5}>Параметры запроса</Title>
+          <Title level={5}>Параметры доставки</Title>
           <Form
             form={form}
             layout="vertical"
             initialValues={{
+              quantity: 10,
               productId: products[0]?.id,
-              quantity: 20,
               partnerWarehouseId: partnerWarehouses[0]?.id,
             }}
             onFinish={(values) => {
-              setOptions(
-                calculateDelivery(
-                  values.productId,
-                  values.quantity,
-                  values.partnerWarehouseId,
-                  priority,
-                ),
-              )
+              const nextOptions = calculateDeliveryOptions({
+                productId: values.productId,
+                quantity: values.quantity,
+                partnerWarehouseId: values.partnerWarehouseId,
+                priority,
+                products,
+                transports,
+                ownWarehouses,
+                partnerWarehouses,
+                stocks,
+              })
+              setOptions(nextOptions)
+              message.success('Варианты доставки рассчитаны в mock-режиме')
             }}
           >
             <Form.Item name="productId" label="Товар" rules={[{ required: true }]}>
-              <Select options={products.map((item) => ({ value: item.id, label: item.name }))} />
+              <Select
+                options={products.map((item) => ({
+                  value: item.id,
+                  label: `${item.sku} - ${item.name}`,
+                }))}
+              />
             </Form.Item>
             <Form.Item name="quantity" label="Количество" rules={[{ required: true }]}>
-              <InputNumber min={1} className="full-width" />
+              <InputNumber className="full-width" min={1} />
             </Form.Item>
             <Form.Item
               name="partnerWarehouseId"
@@ -984,72 +1142,341 @@ function DeliveryPage({
             </Form.Item>
             <div className="field-block">
               <Text className="field-label">Приоритет</Text>
-              <Segmented
+              <Segmented<DeliveryPriority>
                 block
                 value={priority}
-                onChange={(value) => setPriority(value as DeliveryPriority)}
                 options={[
                   { label: priorityLabels.CHEAPEST, value: 'CHEAPEST' },
                   { label: priorityLabels.FASTEST, value: 'FASTEST' },
                 ]}
+                onChange={setPriority}
               />
             </div>
-            <Button icon={<ReloadOutlined />} type="primary" htmlType="submit" block>
+            <Button type="primary" htmlType="submit" icon={<ReloadOutlined />} block>
               Рассчитать
             </Button>
           </Form>
         </div>
         <div className="panel result-panel">
-          <Space direction="vertical" size={16} className="full-width">
-            <Alert
-              type="info"
-              showIcon
-              message="Результат ранжируется так же, как должен ранжироваться ответ /delivery/calculate."
+          {options.length ? (
+            <Table
+              rowKey={(item) =>
+                `${item.sourceWarehouseId}-${item.partnerWarehouseId}-${item.transportId}`
+              }
+              columns={columns}
+              dataSource={options}
+              pagination={false}
+              scroll={{ x: 900 }}
             />
-            {options.length ? (
-              <Table
-                rowKey={(record) => `${record.sourceWarehouseId}-${record.transportId}`}
-                columns={columns}
-                dataSource={options}
-                pagination={false}
-                scroll={{ x: 920 }}
-              />
-            ) : (
-              <Empty description="Заполните параметры и запустите расчет" />
-            )}
-          </Space>
+          ) : (
+            <Empty description="Заполните параметры и запустите расчет" />
+          )}
         </div>
-      </section>
+      </div>
     </>
   )
 }
 
-function App() {
+function calculateDeliveryOptions({
+  productId,
+  quantity,
+  partnerWarehouseId,
+  priority,
+  products,
+  transports,
+  ownWarehouses,
+  partnerWarehouses,
+  stocks,
+}: {
+  productId: number
+  quantity: number
+  partnerWarehouseId: number
+  priority: DeliveryPriority
+  products: ProductResponse[]
+  transports: TransportResponse[]
+  ownWarehouses: OwnWarehouseResponse[]
+  partnerWarehouses: PartnerWarehouseResponse[]
+  stocks: StockResponse[]
+}) {
+  const product = products.find((item) => item.id === productId)
+  const partnerWarehouse = partnerWarehouses.find(
+    (item) => item.id === partnerWarehouseId,
+  )
+
+  if (!product || !partnerWarehouse || quantity <= 0) {
+    return []
+  }
+
+  const requiredWeightKg = product.weightKg * quantity
+  const requiredVolumeM3 = product.volumeM3 * quantity
+
+  const options = ownWarehouses
+    .filter((warehouse) => warehouse.isActive)
+    .flatMap((warehouse) => {
+      const stock = stocks.find(
+        (item) => item.ownWarehouseId === warehouse.id && item.productId === product.id,
+      )
+      const availableQuantity = stock
+        ? Math.max(stock.quantity - stock.reservedQuantity, 0)
+        : 0
+
+      if (availableQuantity < quantity) {
+        return []
+      }
+
+      const distance = distanceKm(warehouse, partnerWarehouse)
+      const warehouseTransportIds = warehouse.transports.map((item) => item.id)
+
+      return transports
+        .filter((transport) => warehouseTransportIds.includes(transport.id))
+        .filter((transport) => isTransportAccepted(transport.transportType, partnerWarehouse))
+        .map((transport) => {
+          const tripsByWeight = requiredWeightKg / transport.maxWeightKg
+          const tripsByVolume = requiredVolumeM3 / transport.maxVolumeM3
+          const tripsCount = Math.max(1, Math.ceil(Math.max(tripsByWeight, tripsByVolume)))
+
+          return {
+            sourceWarehouseId: warehouse.id,
+            sourceWarehouseName: warehouse.name,
+            partnerWarehouseId: partnerWarehouse.id,
+            partnerWarehouseName: partnerWarehouse.name,
+            transportId: transport.id,
+            transportName: transport.name,
+            transportType: transport.transportType,
+            distanceKm: distance,
+            requiredWeightKg,
+            requiredVolumeM3,
+            tripsCount,
+            estimatedTimeHours: (distance / transport.speedKmH) * tripsCount,
+            estimatedCost: distance * transport.costPerKm * tripsCount,
+            availableQuantity,
+          }
+        })
+    })
+
+  return [...options].sort((left, right) =>
+    priority === 'CHEAPEST'
+      ? left.estimatedCost - right.estimatedCost
+      : left.estimatedTimeHours - right.estimatedTimeHours,
+  )
+}
+
+function AppContent() {
+  const [products, setProducts] = useState<ProductResponse[]>(initialProducts)
+  const [transports, setTransports] = useState<TransportResponse[]>(initialTransports)
+  const [ownWarehouses, setOwnWarehouses] =
+    useState<OwnWarehouseResponse[]>(initialOwnWarehouses)
+  const [partners, setPartners] = useState<PartnerResponse[]>(initialPartners)
+  const [partnerWarehouses, setPartnerWarehouses] = useState<
+    PartnerWarehouseResponse[]
+  >(initialPartnerWarehouses)
+  const [stocks, setStocks] = useState<StockResponse[]>(initialStocks)
+
+  const activePartners = useMemo(
+    () => partners.filter((partner) => partner.isActive),
+    [partners],
+  )
+
+  const addProduct = (values: ProductCreateRequest) => {
+    setProducts((items) => [...items, { ...values, id: nextId(items) }])
+    message.success('Товар добавлен в mock-данные')
+  }
+
+  const addTransport = (values: TransportCreateRequest) => {
+    setTransports((items) => [...items, { ...values, id: nextId(items) }])
+    message.success('Транспорт добавлен в mock-данные')
+  }
+
+  const addOwnWarehouse = (values: OwnWarehouseCreateRequest) => {
+    const linkedTransports = transports
+      .filter((transport) => values.transportIds.includes(transport.id))
+      .map((transport) => ({
+        id: transport.id,
+        name: transport.name,
+        transportType: transport.transportType,
+      }))
+
+    setOwnWarehouses((items) => [
+      ...items,
+      {
+        id: nextId(items),
+        name: values.name,
+        address: values.address,
+        latitude: values.latitude,
+        longitude: values.longitude,
+        isActive: true,
+        transports: linkedTransports,
+      },
+    ])
+    message.success('Склад добавлен в mock-данные')
+  }
+
+  const addPartner = (values: PartnerCreateRequest) => {
+    setPartners((items) => [
+      ...items,
+      {
+        id: nextId(items),
+        name: values.name,
+        contactEmail: values.contactEmail,
+        isActive: values.isActive,
+      },
+    ])
+    message.success('Партнер добавлен в mock-данные')
+  }
+
+  const addPartnerWarehouse = (values: PartnerWarehouseCreateRequest) => {
+    if (!values.acceptsLand && !values.acceptsSea && !values.acceptsAir) {
+      message.error('Нужен хотя бы один доступный тип доставки')
+      return
+    }
+
+    setPartnerWarehouses((items) => [
+      ...items,
+      {
+        ...values,
+        id: nextId(items),
+        isActive: true,
+      },
+    ])
+    message.success('Склад партнера добавлен в mock-данные')
+  }
+
+  const addStock = (values: StockFormValues) => {
+    setStocks((items) => [
+      ...items,
+      {
+        id: nextId(items),
+        ownWarehouseId: values.ownWarehouseId,
+        productId: values.productId,
+        quantity: values.quantity,
+        reservedQuantity: 0,
+      },
+    ])
+    message.success('Остаток добавлен в mock-данные')
+  }
+
+  return (
+    <Layout className="app-shell">
+      <Sider width={280} theme="light" className="sider">
+        <div className="brand">
+          <div className="brand-mark">S</div>
+          <div>
+            <Title level={5}>Shulker SRM</Title>
+            <Text type="secondary">warehouse CRM</Text>
+          </div>
+        </div>
+        <AppMenu />
+      </Sider>
+      <Layout>
+        <Header className="topbar">
+          <div>
+            <Title level={3}>Рабочий интерфейс</Title>
+            <Text type="secondary">
+              Frontend sync with backend API, mock mode until backend builds
+            </Text>
+          </div>
+          <Space wrap>
+            <Tag icon={<ApiOutlined />} color="processing">
+              /api proxy to localhost:8080
+            </Tag>
+            <Tag color="warning">backend compile fix needed</Tag>
+          </Space>
+        </Header>
+        <Content className="content">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Dashboard
+                  products={products}
+                  transports={transports}
+                  ownWarehouses={ownWarehouses}
+                  partners={partners}
+                  partnerWarehouses={partnerWarehouses}
+                  stocks={stocks}
+                />
+              }
+            />
+            <Route
+              path="/products"
+              element={<ProductsPage products={products} addProduct={addProduct} />}
+            />
+            <Route
+              path="/own-warehouses"
+              element={
+                <OwnWarehousesPage
+                  warehouses={ownWarehouses}
+                  transports={transports}
+                  addWarehouse={addOwnWarehouse}
+                />
+              }
+            />
+            <Route
+              path="/partners"
+              element={<PartnersPage partners={partners} addPartner={addPartner} />}
+            />
+            <Route
+              path="/partner-warehouses"
+              element={
+                <PartnerWarehousesPage
+                  partners={activePartners}
+                  warehouses={partnerWarehouses}
+                  addWarehouse={addPartnerWarehouse}
+                />
+              }
+            />
+            <Route
+              path="/transports"
+              element={
+                <TransportsPage transports={transports} addTransport={addTransport} />
+              }
+            />
+            <Route
+              path="/stocks"
+              element={
+                <StocksPage
+                  stocks={stocks}
+                  products={products}
+                  warehouses={ownWarehouses}
+                  addStock={addStock}
+                />
+              }
+            />
+            <Route
+              path="/delivery"
+              element={
+                <DeliveryPage
+                  products={products}
+                  transports={transports}
+                  ownWarehouses={ownWarehouses}
+                  partnerWarehouses={partnerWarehouses}
+                  stocks={stocks}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Content>
+      </Layout>
+    </Layout>
+  )
+}
+
+export default function App() {
   return (
     <ConfigProvider
       theme={{
         token: {
-          borderRadius: 6,
           colorPrimary: '#2563eb',
-          colorSuccess: '#16845b',
-          colorWarning: '#b7791f',
+          borderRadius: 6,
           fontFamily:
-            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        },
-        components: {
-          Layout: {
-            bodyBg: '#f5f7fb',
-            headerBg: '#ffffff',
-            siderBg: '#ffffff',
-          },
+            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
         },
       }}
     >
       <BrowserRouter>
-        <AppShell />
+        <AppContent />
       </BrowserRouter>
     </ConfigProvider>
   )
 }
-
-export default App
