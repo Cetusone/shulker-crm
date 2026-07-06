@@ -12,10 +12,11 @@ import com.cetus.shulkercrm.logistics.internal.repository.TransportRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 
 @Service
 @Slf4j
@@ -45,12 +46,10 @@ public class TransportService implements  TransportServiceInterface {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TransportResponse>  getAllTransports() {
+    public Page<TransportResponse>  getAllTransports(Pageable pageable) {
         log.info("getAllTransports");
-        List<Transport> transports = transportRepository.findAll();
-        return transports.stream()
-                .map(this::mapToResponse)
-                .toList();
+        Page<Transport> transports = transportRepository.findAll(pageable);
+        return transports.map(this::mapToResponse);
     }
 
     @Override

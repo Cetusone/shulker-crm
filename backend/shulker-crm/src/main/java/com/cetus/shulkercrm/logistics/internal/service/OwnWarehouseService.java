@@ -12,6 +12,8 @@ import com.cetus.shulkercrm.logistics.internal.repository.TransportRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,23 +67,23 @@ public class OwnWarehouseService implements OwnWarehouseServiceInterface {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OwnWarehouseResponse> getAllWarehouse() {
+    public Page<OwnWarehouseResponse> getAllWarehouse(Pageable pageable) {
         log.info("getAllWareHouse");
-        List<OwnWarehouse> warehouses = ownWarehouseRepository.findAll();
-        List<OwnWarehouseTransport> links = ownWarehouseTransportRepository.findByOwnWarehouseIn(warehouses);
+        Page<OwnWarehouse> warehouses = ownWarehouseRepository.findAll(pageable);
+        if (warehouses.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        List<OwnWarehouse> warehousesOnPage = warehouses.getContent();
+        List<OwnWarehouseTransport> links = ownWarehouseTransportRepository.findByOwnWarehouseIn(warehousesOnPage);
         Map<Long, List<Transport>> transportsByWarehouseId = links.stream()
                 .collect(Collectors.groupingBy(
                         link -> link.getOwnWarehouse().getId(),
                         Collectors.mapping(OwnWarehouseTransport::getTransport, Collectors.toList())
                 ));
-
-        return warehouses.stream()
-                .map(warehouse -> {
-                    List<Transport> transports = transportsByWarehouseId.getOrDefault(warehouse.getId(), List.of());
-
-                    return mapToResponse(warehouse, transports);
-                })
-                .toList();
+        return warehouses.map(warehouse -> {
+            List<Transport> transports = transportsByWarehouseId.getOrDefault(warehouse.getId(), List.of());
+            return mapToResponse(warehouse, transports);
+        });
     }
 
     @Override

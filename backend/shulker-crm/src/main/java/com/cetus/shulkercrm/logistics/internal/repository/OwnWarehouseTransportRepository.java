@@ -2,6 +2,8 @@ package com.cetus.shulkercrm.logistics.internal.repository;
 
 import com.cetus.shulkercrm.logistics.internal.entity.OwnWarehouse;
 import com.cetus.shulkercrm.logistics.internal.entity.OwnWarehouseTransport;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,6 +18,9 @@ public interface OwnWarehouseTransportRepository extends JpaRepository<OwnWareho
 
     @EntityGraph(attributePaths = {"transport"})
     List<OwnWarehouseTransport> findByOwnWarehouseIn(List<OwnWarehouse> warehouses);
+
+    @EntityGraph(attributePaths = {"transport"})
+    Page<OwnWarehouseTransport> findAllByOwnWarehouseId(Long ownWarehouseId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"transport"})
     List<OwnWarehouseTransport> findAllByOwnWarehouseId(Long ownWarehouseId);

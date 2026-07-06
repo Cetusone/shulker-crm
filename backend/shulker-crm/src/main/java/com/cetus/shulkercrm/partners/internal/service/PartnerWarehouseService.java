@@ -10,6 +10,8 @@ import com.cetus.shulkercrm.partners.internal.repository.PartnerWarehouseReposit
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,12 +50,11 @@ public class PartnerWarehouseService implements PartnerWarehouseServiceInterface
 
     @Override
     @Transactional(readOnly = true)
-    public List<PartnerWarehouseResponse> getWarehouses(long partnerId) {
+    public Page<PartnerWarehouseResponse> getWarehouses(long partnerId, Pageable pageable) {
         log.debug("Запрос списка складов для партнёра ID: {}", partnerId);
 
-        return partnerWarehouseRepository.findAllByPartnerId(partnerId).stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Page<PartnerWarehouse> warehouses = partnerWarehouseRepository.findAllByPartnerId(partnerId, pageable);
+        return warehouses.map(this::mapToResponse);
     }
 
     @Override

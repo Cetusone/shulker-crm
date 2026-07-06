@@ -8,6 +8,8 @@ import com.cetus.shulkercrm.partners.internal.repository.PartnerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +40,10 @@ public class PartnerService implements PartnerServiceInterface {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PartnerResponse> getPartners() {
+    public Page<PartnerResponse> getPartners(Pageable pageable) {
         log.debug("Запрос списка всех партнёров");
-
-        return partnerRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+        Page<Partner> partners = partnerRepository.findAll(pageable);
+        return partners.map(this::mapToResponse);
     }
 
     @Override

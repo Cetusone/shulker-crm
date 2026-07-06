@@ -1,10 +1,12 @@
-package com.cetus.shulkercrm.api.partners;
+package com.cetus.shulkercrm.partners.api.controller;
 
-import com.cetus.shulkercrm.partners.api.PartnerWarehouseServiceInterface;
 import com.cetus.shulkercrm.partners.api.dto.PartnerWarehouseCreateRequest;
 import com.cetus.shulkercrm.partners.api.dto.PartnerWarehouseResponse;
+import com.cetus.shulkercrm.partners.internal.service.PartnerWarehouseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PartnersWarehouseController {
 
-    private final PartnerWarehouseServiceInterface warehouseService;
+    private final PartnerWarehouseService warehouseService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -28,8 +30,8 @@ public class PartnersWarehouseController {
     }
 
     @GetMapping
-    public List<PartnerWarehouseResponse> getWarehouses(@PathVariable long partnerId) {
-        return warehouseService.getWarehouses(partnerId);
+    public Page<PartnerWarehouseResponse> getWarehouses(@PathVariable long partnerId, Pageable pageable) {
+        return warehouseService.getWarehouses(partnerId, pageable);
     }
 
     @GetMapping("/{warehouseId}")

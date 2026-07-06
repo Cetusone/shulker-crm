@@ -9,6 +9,8 @@ import com.cetus.shulkercrm.inventory.internal.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,13 +55,11 @@ public class ProductService implements ProductServiceInterface {
     }
     @Override
     @Transactional(readOnly = true)
-    public List<ProductResponse> getAllProducts() {
+    public Page<ProductResponse> getAllProducts(Pageable pageable) {
         log.info("getAllProducts");
-        List<Product> products = productRepository.findAll();
+        Page<Product> products = productRepository.findAll(pageable);
 
-        return products.stream()
-                .map(this::mapToResponse)
-                .toList();
+        return products.map(this::mapToResponse);
     }
 
     @Override

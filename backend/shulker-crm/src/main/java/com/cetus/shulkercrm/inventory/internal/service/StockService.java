@@ -13,6 +13,8 @@ import com.cetus.shulkercrm.inventory.internal.repository.StockRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,12 +66,10 @@ public class StockService implements StockServiceInterface {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockResponse> getAllStocks(Long warehouseId) {
+    public Page<StockResponse> getAllStocks(Long warehouseId, Pageable pageable) {
         log.info("getAllStocks");
-        return stockRepository.findAllByOwnWarehouseId(warehouseId).stream()
-                .map(this::mapToResponse)
-                .toList();
-
+        Page<Stock> stocks =  stockRepository.findAllByOwnWarehouseId(warehouseId, pageable);
+        return stocks.map(this::mapToResponse);
 
     }
 
