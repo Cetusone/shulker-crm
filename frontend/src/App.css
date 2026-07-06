@@ -120,6 +120,20 @@
   margin-bottom: 8px;
 }
 
+.endpoint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
 .ant-table-wrapper {
   background: #ffffff;
   border: 1px solid #e6eaf0;
