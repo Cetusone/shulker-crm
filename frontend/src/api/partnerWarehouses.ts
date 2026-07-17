@@ -1,14 +1,18 @@
-import { apiRequest } from './client'
+import { apiRequest, buildPageQuery } from './client'
 import type {
+  PageParams,
   PartnerWarehouseCreateRequest,
   PartnerWarehouseResponse,
+  SpringPage,
 } from '../types/api'
 
 const basePath = (partnerId: number) => `/api/partners/${partnerId}/warehouses`
 
 export const partnerWarehousesApi = {
-  list: (partnerId: number) =>
-    apiRequest<PartnerWarehouseResponse[]>(basePath(partnerId)),
+  list: (partnerId: number, params?: PageParams) =>
+    apiRequest<SpringPage<PartnerWarehouseResponse>>(
+      `${basePath(partnerId)}${buildPageQuery(params)}`,
+    ),
   get: (partnerId: number, warehouseId: number) =>
     apiRequest<PartnerWarehouseResponse>(`${basePath(partnerId)}/${warehouseId}`),
   create: (partnerId: number, payload: PartnerWarehouseCreateRequest) =>

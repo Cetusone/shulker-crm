@@ -247,6 +247,7 @@ const endpointGroups = [
     value: 'GET/POST /api/partners/{partnerId}/warehouses',
   },
   { label: 'Stock', value: 'GET/POST /api/warehouse/{id}/stock' },
+  { label: 'Routing', value: 'POST /api/routing/calculate' },
 ]
 
 function nextId<T extends { id: number }>(items: T[]) {
@@ -409,10 +410,10 @@ function Dashboard({
       <div className="panel field-block">
         <Space direction="vertical" size={12} className="full-width">
           <Alert
-            type="warning"
+            type="success"
             showIcon
-            message="Backend пока требует фикс сборки"
-            description="В актуальном main в ProductController.java остались conflict markers. Фронт обновлен под контракт, но live-подключение лучше проверять после backend-fix."
+            message="Backend API v0.0.4 pulled"
+            description="Контракт стал больше: списки возвращают Spring Page, добавлен routing endpoint POST /api/routing/calculate."
           />
           <Alert
             type="info"
@@ -1080,15 +1081,15 @@ function DeliveryPage({
     <>
       <PageHeader
         title="Расчет доставки"
-        endpoint="POST /api/delivery/calculate"
-        description="Пока backend endpoint не найден, расчет оставлен как frontend-mock по новым сущностям."
+        endpoint="POST /api/routing/calculate"
+        description="Экран готов к backend-расчету DeliveryOptionRequest/DeliveryCalculationResponse; mock-расчет оставлен для демо."
       />
       <Alert
         className="field-block"
         type="info"
         showIcon
-        message="Ожидает backend API"
-        description="Экран уже использует products, own warehouses, partner warehouses, transports и stocks. Когда появится routing endpoint, форму можно переключить на один POST request."
+        message="Routing API добавлен"
+        description="Backend ждет productId, quantity, partnerId, partnerWarehouseId и preference. Следующий шаг - подключить форму к routingApi.calculate."
       />
       <div className="workspace">
         <div className="panel form-panel">
@@ -1379,7 +1380,7 @@ function AppContent() {
             <Tag icon={<ApiOutlined />} color="processing">
               /api proxy to localhost:8080
             </Tag>
-            <Tag color="warning">backend compile fix needed</Tag>
+            <Tag color="success">backend API v0.0.4</Tag>
           </Space>
         </Header>
         <Content className="content">

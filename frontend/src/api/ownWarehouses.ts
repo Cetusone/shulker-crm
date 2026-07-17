@@ -1,10 +1,18 @@
-import { apiRequest } from './client'
-import type { OwnWarehouseCreateRequest, OwnWarehouseResponse } from '../types/api'
+import { apiRequest, buildPageQuery } from './client'
+import type {
+  OwnWarehouseCreateRequest,
+  OwnWarehouseResponse,
+  PageParams,
+  SpringPage,
+} from '../types/api'
 
 const basePath = '/api/own-warehouses'
 
 export const ownWarehousesApi = {
-  list: () => apiRequest<OwnWarehouseResponse[]>(basePath),
+  list: (params?: PageParams) =>
+    apiRequest<SpringPage<OwnWarehouseResponse>>(
+      `${basePath}${buildPageQuery(params)}`,
+    ),
   get: (id: number) => apiRequest<OwnWarehouseResponse>(`${basePath}/${id}`),
   create: (payload: OwnWarehouseCreateRequest) =>
     apiRequest<OwnWarehouseResponse>(basePath, { method: 'POST', body: payload }),
