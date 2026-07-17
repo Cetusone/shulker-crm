@@ -32,6 +32,7 @@ import {
   message,
 } from 'antd'
 import type { TableProps } from 'antd'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import {
   BrowserRouter,
@@ -42,6 +43,12 @@ import {
   useLocation,
 } from 'react-router-dom'
 import './App.css'
+import { ownWarehousesApi } from './api/ownWarehouses'
+import { partnerWarehousesApi } from './api/partnerWarehouses'
+import { partnersApi } from './api/partners'
+import { productsApi } from './api/products'
+import { stocksApi } from './api/stocks'
+import { transportsApi } from './api/transports'
 import type {
   DeliveryPriority,
   OwnWarehouseCreateRequest,
@@ -53,6 +60,7 @@ import type {
   ProductCharacteristic,
   ProductCreateRequest,
   ProductResponse,
+  SpringPage,
   StockResponse,
   TransportCreateRequest,
   TransportResponse,
@@ -61,6 +69,8 @@ import type {
 
 const { Content, Header, Sider } = Layout
 const { Text, Title } = Typography
+
+const defaultPageParams = { size: 100 }
 
 type StockFormValues = {
   ownWarehouseId: number
@@ -252,6 +262,10 @@ const endpointGroups = [
 
 function nextId<T extends { id: number }>(items: T[]) {
   return items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1
+}
+
+function pageContent<T>(page: SpringPage<T> | undefined, fallback: T[]) {
+  return page?.content ?? fallback
 }
 
 function formatNumber(value: number, fractionDigits = 2) {
@@ -1263,20 +1277,89 @@ function calculateDeliveryOptions({
 }
 
 function AppContent() {
-  const [products, setProducts] = useState<ProductResponse[]>(initialProducts)
-  const [transports, setTransports] = useState<TransportResponse[]>(initialTransports)
-  const [ownWarehouses, setOwnWarehouses] =
+  const [mockProducts, setProducts] = useState<ProductResponse[]>(initialProducts)
+  const [mockTransports, setTransports] =
+    useState<TransportResponse[]>(initialTransports)
+  const [mockOwnWarehouses, setOwnWarehouses] =
     useState<OwnWarehouseResponse[]>(initialOwnWarehouses)
-  const [partners, setPartners] = useState<PartnerResponse[]>(initialPartners)
-  const [partnerWarehouses, setPartnerWarehouses] = useState<
+  const [mockPartners, setPartners] = useState<PartnerResponse[]>(initialPartners)
+  const [mockPartnerWarehouses, setPartnerWarehouses] = useState<
     PartnerWarehouseResponse[]
   >(initialPartnerWarehouses)
-  const [stocks, setStocks] = useState<StockResponse[]>(initialStocks)
+  const [mockStocks, setStocks] = useState<StockResponse[]>(initialStocks)
+
+  const productsQuery = useQuery({
+    queryKey: ['products', 'list', defaultPageParams],
+    queryFn: () => productsApi.list(defaultPageParams),
+  })
+  const transportsQuery = useQuery({
+    queryKey: ['transports', 'list', defaultPageParams],
+    queryFn: () => transportsApi.list(defaultPageParams),
+  })
+  const ownWarehousesQuery = useQuery({
+    queryKey: ['ownWarehouses', 'list', defaultPageParams],
+    queryFn: () => ownWarehousesApi.list(defaultPageParams),
+  })
+  const partnersQuery = useQuery({
+    queryKey: ['partners', 'list', defaultPageParams],
+    queryFn: () => partnersApi.list(defaultPageParams),
+  })
+
+  const products = pageContent(productsQuery.data, mockProducts)
+  const transports = pageContent(transportsQuery.data, mockTransports)
+  const ownWarehouses = pageContent(ownWarehousesQuery.data, mockOwnWarehouses)
+  const partners = pageContent(partnersQuery.data, mockPartners)
 
   const activePartners = useMemo(
     () => partners.filter((partner) => partner.isActive),
     [partners],
   )
+
+  const partnerWarehousesQuery = useQuery({
+    queryKey: [
+      'partnerWarehouses',
+      'byPartner',
+      activePartners.map((partner) => partner.id).join(','),
+    ],
+    queryFn: async () => {
+      const pages = await Promise.all(
+        activePartners.map((partner) =>
+          partnerWarehousesApi.list(partner.id, defaultPageParams),
+        ),
+      )
+      return pages.flatMap((page) => page.content)
+    },
+    enabled: activePartners.length > 0,
+  })
+  const partnerWarehouses =
+    partnerWarehousesQuery.data ?? mockPartnerWarehouses
+
+  const stocksQuery = useQuery({
+    queryKey: [
+      'stocks',
+      'byWarehouse',
+      ownWarehouses.map((warehouse) => warehouse.id).join(','),
+    ],
+    queryFn: async () => {
+      const pages = await Promise.all(
+        ownWarehouses.map((warehouse) =>
+          stocksApi.list(warehouse.id, defaultPageParams),
+        ),
+      )
+      return pages.flatMap((page) => page.content)
+    },
+    enabled: ownWarehouses.length > 0,
+  })
+  const stocks = stocksQuery.data ?? mockStocks
+
+  const liveQueryCount = [
+    productsQuery,
+    transportsQuery,
+    ownWarehousesQuery,
+    partnersQuery,
+    partnerWarehousesQuery,
+    stocksQuery,
+  ].filter((query) => query.isSuccess).length
 
   const addProduct = (values: ProductCreateRequest) => {
     setProducts((items) => [...items, { ...values, id: nextId(items) }])
@@ -1373,7 +1456,7 @@ function AppContent() {
           <div>
             <Title level={3}>Рабочий интерфейс</Title>
             <Text type="secondary">
-              Frontend sync with backend API, mock mode until backend builds
+              Frontend reads backend API with mock fallback for offline demo
             </Text>
           </div>
           <Space wrap>
@@ -1381,6 +1464,9 @@ function AppContent() {
               /api proxy to localhost:8080
             </Tag>
             <Tag color="success">backend API v0.0.4</Tag>
+            <Tag color={liveQueryCount ? 'success' : 'default'}>
+              {liveQueryCount ? `live GET ${liveQueryCount}/6` : 'mock fallback'}
+            </Tag>
           </Space>
         </Header>
         <Content className="content">
