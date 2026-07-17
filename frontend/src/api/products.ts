@@ -1,10 +1,16 @@
-import { apiRequest } from './client'
-import type { ProductCreateRequest, ProductResponse } from '../types/api'
+import { apiRequest, buildPageQuery } from './client'
+import type {
+  PageParams,
+  ProductCreateRequest,
+  ProductResponse,
+  SpringPage,
+} from '../types/api'
 
 const basePath = '/api/products'
 
 export const productsApi = {
-  list: () => apiRequest<ProductResponse[]>(basePath),
+  list: (params?: PageParams) =>
+    apiRequest<SpringPage<ProductResponse>>(`${basePath}${buildPageQuery(params)}`),
   get: (id: number) => apiRequest<ProductResponse>(`${basePath}/${id}`),
   create: (payload: ProductCreateRequest) =>
     apiRequest<ProductResponse>(basePath, { method: 'POST', body: payload }),

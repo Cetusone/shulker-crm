@@ -1,6 +1,25 @@
 export type TransportType = 'AUTO' | 'RAILWAY' | 'AVIATION'
 
-export type DeliveryPriority = 'FASTEST' | 'CHEAPEST'
+export type DeliveryPreference = 'FASTEST' | 'CHEAPEST'
+export type DeliveryPriority = DeliveryPreference
+
+export type PageParams = {
+  page?: number
+  size?: number
+  sort?: string
+}
+
+export type SpringPage<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+  first: boolean
+  last: boolean
+  numberOfElements: number
+  empty: boolean
+}
 
 export type ProductCharacteristic = {
   id?: number
@@ -108,6 +127,37 @@ export type StockResponse = {
   quantity: number
   reservedQuantity: number
   updatedAt?: string
+}
+
+export type DeliveryOptionRequest = {
+  productId: number
+  quantity: number
+  partnerId: number
+  partnerWarehouseId: number
+  preference: DeliveryPreference
+}
+
+export type DeliveryOptionResponse = {
+  sourceWarehouseId: number
+  sourceWarehouseName: string
+  transportId: number
+  transportName: string
+  transportType: TransportType
+  availableQuantity: number
+  distanceKm: number
+  totalWeightKg: number
+  totalVolumeM3: number
+  requiredTrips: number
+  estimatedTimeHours: number
+  estimatedCost: number
+}
+
+export type DeliveryCalculationResponse = {
+  appliedPreference: DeliveryPreference
+  partnerWarehouseId: number
+  productId: number
+  requestedQuantity: number
+  options: DeliveryOptionResponse[]
 }
 
 export type ApiValidationError = {

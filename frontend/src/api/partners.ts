@@ -1,10 +1,16 @@
-import { apiRequest } from './client'
-import type { PartnerCreateRequest, PartnerResponse } from '../types/api'
+import { apiRequest, buildPageQuery } from './client'
+import type {
+  PageParams,
+  PartnerCreateRequest,
+  PartnerResponse,
+  SpringPage,
+} from '../types/api'
 
 const basePath = '/api/partners'
 
 export const partnersApi = {
-  list: () => apiRequest<PartnerResponse[]>(basePath),
+  list: (params?: PageParams) =>
+    apiRequest<SpringPage<PartnerResponse>>(`${basePath}${buildPageQuery(params)}`),
   get: (id: number) => apiRequest<PartnerResponse>(`${basePath}/${id}`),
   create: (payload: PartnerCreateRequest) =>
     apiRequest<PartnerResponse>(basePath, { method: 'POST', body: payload }),

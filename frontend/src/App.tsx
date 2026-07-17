@@ -32,6 +32,7 @@ import {
   message,
 } from 'antd'
 import type { TableProps } from 'antd'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import {
   BrowserRouter,
@@ -42,8 +43,17 @@ import {
   useLocation,
 } from 'react-router-dom'
 import './App.css'
+import { ApiError } from './api/client'
+import { ownWarehousesApi } from './api/ownWarehouses'
+import { partnerWarehousesApi } from './api/partnerWarehouses'
+import { partnersApi } from './api/partners'
+import { productsApi } from './api/products'
+import { routingApi } from './api/routing'
+import { stocksApi } from './api/stocks'
+import { transportsApi } from './api/transports'
 import type {
   DeliveryPriority,
+  DeliveryCalculationResponse,
   OwnWarehouseCreateRequest,
   OwnWarehouseResponse,
   PartnerCreateRequest,
@@ -53,6 +63,7 @@ import type {
   ProductCharacteristic,
   ProductCreateRequest,
   ProductResponse,
+  SpringPage,
   StockResponse,
   TransportCreateRequest,
   TransportResponse,
@@ -61,6 +72,8 @@ import type {
 
 const { Content, Header, Sider } = Layout
 const { Text, Title } = Typography
+
+const defaultPageParams = { size: 100 }
 
 type StockFormValues = {
   ownWarehouseId: number
@@ -247,10 +260,30 @@ const endpointGroups = [
     value: 'GET/POST /api/partners/{partnerId}/warehouses',
   },
   { label: 'Stock', value: 'GET/POST /api/warehouse/{id}/stock' },
+  { label: 'Routing', value: 'POST /api/routing/calculate' },
 ]
 
 function nextId<T extends { id: number }>(items: T[]) {
   return items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1
+}
+
+function pageContent<T>(page: SpringPage<T> | undefined, fallback: T[]) {
+  return page?.content ?? fallback
+}
+
+function isBackendValidationError(error: unknown) {
+  return error instanceof ApiError
+}
+
+function showApiError(error: unknown) {
+  const fallbackMessage = 'Backend вернул ошибку. Проверьте данные формы.'
+
+  if (error instanceof ApiError) {
+    message.error(error.message || fallbackMessage)
+    return
+  }
+
+  message.error(fallbackMessage)
 }
 
 function formatNumber(value: number, fractionDigits = 2) {
@@ -409,10 +442,10 @@ function Dashboard({
       <div className="panel field-block">
         <Space direction="vertical" size={12} className="full-width">
           <Alert
-            type="warning"
+            type="success"
             showIcon
-            message="Backend пока требует фикс сборки"
-            description="В актуальном main в ProductController.java остались conflict markers. Фронт обновлен под контракт, но live-подключение лучше проверять после backend-fix."
+            message="Backend API v0.0.4 pulled"
+            description="Контракт стал больше: списки возвращают Spring Page, добавлен routing endpoint POST /api/routing/calculate."
           />
           <Alert
             type="info"
@@ -460,7 +493,7 @@ function ProductsPage({
   addProduct,
 }: {
   products: ProductResponse[]
-  addProduct: (values: ProductCreateRequest) => void
+  addProduct: (values: ProductCreateRequest) => Promise<boolean>
 }) {
   const [form] = Form.useForm<ProductCreateRequest & { characteristicsText?: string }>()
 
@@ -507,12 +540,14 @@ function ProductsPage({
           <Form
             form={form}
             layout="vertical"
-            onFinish={(values) => {
-              addProduct({
+            onFinish={async (values) => {
+              const saved = await addProduct({
                 ...values,
                 characteristics: parseCharacteristics(values.characteristicsText),
               })
-              form.resetFields()
+              if (saved) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="name" label="Название" rules={[{ required: true }]}>
@@ -561,7 +596,7 @@ function TransportsPage({
   addTransport,
 }: {
   transports: TransportResponse[]
-  addTransport: (values: TransportCreateRequest) => void
+  addTransport: (values: TransportCreateRequest) => Promise<boolean>
 }) {
   const [form] = Form.useForm<TransportCreateRequest>()
 
@@ -609,9 +644,10 @@ function TransportsPage({
             form={form}
             layout="vertical"
             initialValues={{ transportType: 'AUTO' }}
-            onFinish={(values) => {
-              addTransport(values)
-              form.resetFields()
+            onFinish={async (values) => {
+              if (await addTransport(values)) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="transportType" label="Тип" rules={[{ required: true }]}>
@@ -681,7 +717,7 @@ function OwnWarehousesPage({
 }: {
   warehouses: OwnWarehouseResponse[]
   transports: TransportResponse[]
-  addWarehouse: (values: OwnWarehouseCreateRequest) => void
+  addWarehouse: (values: OwnWarehouseCreateRequest) => Promise<boolean>
 }) {
   const [form] = Form.useForm<OwnWarehouseCreateRequest>()
 
@@ -727,9 +763,10 @@ function OwnWarehousesPage({
           <Form
             form={form}
             layout="vertical"
-            onFinish={(values) => {
-              addWarehouse(values)
-              form.resetFields()
+            onFinish={async (values) => {
+              if (await addWarehouse(values)) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="name" label="Название" rules={[{ required: true }]}>
@@ -785,7 +822,7 @@ function PartnersPage({
   addPartner,
 }: {
   partners: PartnerResponse[]
-  addPartner: (values: PartnerCreateRequest) => void
+  addPartner: (values: PartnerCreateRequest) => Promise<boolean>
 }) {
   const [form] = Form.useForm<PartnerCreateRequest>()
 
@@ -816,9 +853,10 @@ function PartnersPage({
             form={form}
             layout="vertical"
             initialValues={{ isActive: true }}
-            onFinish={(values) => {
-              addPartner(values)
-              form.resetFields()
+            onFinish={async (values) => {
+              if (await addPartner(values)) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="name" label="Компания" rules={[{ required: true }]}>
@@ -851,7 +889,7 @@ function PartnerWarehousesPage({
 }: {
   partners: PartnerResponse[]
   warehouses: PartnerWarehouseResponse[]
-  addWarehouse: (values: PartnerWarehouseCreateRequest) => void
+  addWarehouse: (values: PartnerWarehouseCreateRequest) => Promise<boolean>
 }) {
   const [form] = Form.useForm<PartnerWarehouseCreateRequest>()
 
@@ -898,9 +936,10 @@ function PartnerWarehousesPage({
             form={form}
             layout="vertical"
             initialValues={{ acceptsLand: true, acceptsSea: false, acceptsAir: false }}
-            onFinish={(values) => {
-              addWarehouse(values)
-              form.resetFields()
+            onFinish={async (values) => {
+              if (await addWarehouse(values)) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="partnerId" label="Партнер" rules={[{ required: true }]}>
@@ -963,7 +1002,7 @@ function StocksPage({
   stocks: StockResponse[]
   products: ProductResponse[]
   warehouses: OwnWarehouseResponse[]
-  addStock: (values: StockFormValues) => void
+  addStock: (values: StockFormValues) => Promise<boolean>
 }) {
   const [form] = Form.useForm<StockFormValues>()
 
@@ -995,9 +1034,10 @@ function StocksPage({
           <Form
             form={form}
             layout="vertical"
-            onFinish={(values) => {
-              addStock(values)
-              form.resetFields()
+            onFinish={async (values) => {
+              if (await addStock(values)) {
+                form.resetFields()
+              }
             }}
           >
             <Form.Item name="ownWarehouseId" label="Склад" rules={[{ required: true }]}>
@@ -1050,6 +1090,9 @@ function DeliveryPage({
     quantity: number
     partnerWarehouseId: number
   }>()
+  const calculateMutation = useMutation({
+    mutationFn: routingApi.calculate,
+  })
 
   const columns: TableProps<DeliveryOption>['columns'] = [
     { title: 'Наш склад', dataIndex: 'sourceWarehouseName' },
@@ -1080,15 +1123,15 @@ function DeliveryPage({
     <>
       <PageHeader
         title="Расчет доставки"
-        endpoint="POST /api/delivery/calculate"
-        description="Пока backend endpoint не найден, расчет оставлен как frontend-mock по новым сущностям."
+        endpoint="POST /api/routing/calculate"
+        description="Экран готов к backend-расчету DeliveryOptionRequest/DeliveryCalculationResponse; mock-расчет оставлен для демо."
       />
       <Alert
         className="field-block"
         type="info"
         showIcon
-        message="Ожидает backend API"
-        description="Экран уже использует products, own warehouses, partner warehouses, transports и stocks. Когда появится routing endpoint, форму можно переключить на один POST request."
+        message="Routing API добавлен"
+        description="Форма сначала вызывает POST /api/routing/calculate. Если backend недоступен, экран оставляет локальный mock-расчет для демо."
       />
       <div className="workspace">
         <div className="panel form-panel">
@@ -1101,20 +1144,46 @@ function DeliveryPage({
               productId: products[0]?.id,
               partnerWarehouseId: partnerWarehouses[0]?.id,
             }}
-            onFinish={(values) => {
-              const nextOptions = calculateDeliveryOptions({
-                productId: values.productId,
-                quantity: values.quantity,
-                partnerWarehouseId: values.partnerWarehouseId,
-                priority,
-                products,
-                transports,
-                ownWarehouses,
-                partnerWarehouses,
-                stocks,
-              })
-              setOptions(nextOptions)
-              message.success('Варианты доставки рассчитаны в mock-режиме')
+            onFinish={async (values) => {
+              const partnerWarehouse = partnerWarehouses.find(
+                (warehouse) => warehouse.id === values.partnerWarehouseId,
+              )
+
+              if (!partnerWarehouse) {
+                message.error('Выберите склад партнера')
+                return
+              }
+
+              try {
+                const response = await calculateMutation.mutateAsync({
+                  productId: values.productId,
+                  quantity: values.quantity,
+                  partnerId: partnerWarehouse.partnerId,
+                  partnerWarehouseId: values.partnerWarehouseId,
+                  preference: priority,
+                })
+                setOptions(mapDeliveryOptions(response, partnerWarehouses))
+                message.success('Варианты доставки рассчитаны через API')
+              } catch (error) {
+                if (isBackendValidationError(error)) {
+                  showApiError(error)
+                  return
+                }
+
+                const nextOptions = calculateDeliveryOptions({
+                  productId: values.productId,
+                  quantity: values.quantity,
+                  partnerWarehouseId: values.partnerWarehouseId,
+                  priority,
+                  products,
+                  transports,
+                  ownWarehouses,
+                  partnerWarehouses,
+                  stocks,
+                })
+                setOptions(nextOptions)
+                message.warning('Backend недоступен, варианты рассчитаны в mock-режиме')
+              }
             }}
           >
             <Form.Item name="productId" label="Товар" rules={[{ required: true }]}>
@@ -1152,7 +1221,13 @@ function DeliveryPage({
                 onChange={setPriority}
               />
             </div>
-            <Button type="primary" htmlType="submit" icon={<ReloadOutlined />} block>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<ReloadOutlined />}
+              loading={calculateMutation.isPending}
+              block
+            >
               Рассчитать
             </Button>
           </Form>
@@ -1261,33 +1336,197 @@ function calculateDeliveryOptions({
   )
 }
 
+function mapDeliveryOptions(
+  response: DeliveryCalculationResponse,
+  partnerWarehouses: PartnerWarehouseResponse[],
+): DeliveryOption[] {
+  const partnerWarehouse = partnerWarehouses.find(
+    (warehouse) => warehouse.id === response.partnerWarehouseId,
+  )
+
+  return response.options.map((option) => ({
+    sourceWarehouseId: option.sourceWarehouseId,
+    sourceWarehouseName: option.sourceWarehouseName,
+    partnerWarehouseId: response.partnerWarehouseId,
+    partnerWarehouseName:
+      partnerWarehouse?.name ?? String(response.partnerWarehouseId),
+    transportId: option.transportId,
+    transportName: option.transportName,
+    transportType: option.transportType,
+    distanceKm: option.distanceKm,
+    requiredWeightKg: option.totalWeightKg,
+    requiredVolumeM3: option.totalVolumeM3,
+    tripsCount: option.requiredTrips,
+    estimatedTimeHours: option.estimatedTimeHours,
+    estimatedCost: option.estimatedCost,
+    availableQuantity: option.availableQuantity,
+  }))
+}
+
 function AppContent() {
-  const [products, setProducts] = useState<ProductResponse[]>(initialProducts)
-  const [transports, setTransports] = useState<TransportResponse[]>(initialTransports)
-  const [ownWarehouses, setOwnWarehouses] =
+  const queryClient = useQueryClient()
+  const [mockProducts, setProducts] = useState<ProductResponse[]>(initialProducts)
+  const [mockTransports, setTransports] =
+    useState<TransportResponse[]>(initialTransports)
+  const [mockOwnWarehouses, setOwnWarehouses] =
     useState<OwnWarehouseResponse[]>(initialOwnWarehouses)
-  const [partners, setPartners] = useState<PartnerResponse[]>(initialPartners)
-  const [partnerWarehouses, setPartnerWarehouses] = useState<
+  const [mockPartners, setPartners] = useState<PartnerResponse[]>(initialPartners)
+  const [mockPartnerWarehouses, setPartnerWarehouses] = useState<
     PartnerWarehouseResponse[]
   >(initialPartnerWarehouses)
-  const [stocks, setStocks] = useState<StockResponse[]>(initialStocks)
+  const [mockStocks, setStocks] = useState<StockResponse[]>(initialStocks)
+
+  const createProductMutation = useMutation({
+    mutationFn: productsApi.create,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),
+  })
+  const createTransportMutation = useMutation({
+    mutationFn: transportsApi.create,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transports'] }),
+  })
+  const createOwnWarehouseMutation = useMutation({
+    mutationFn: ownWarehousesApi.create,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ownWarehouses'] }),
+  })
+  const createPartnerMutation = useMutation({
+    mutationFn: partnersApi.create,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['partners'] }),
+  })
+  const createPartnerWarehouseMutation = useMutation({
+    mutationFn: (values: PartnerWarehouseCreateRequest) =>
+      partnerWarehousesApi.create(values.partnerId, values),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['partnerWarehouses'] }),
+  })
+  const addStockMutation = useMutation({
+    mutationFn: (values: StockFormValues) =>
+      stocksApi.add(values.ownWarehouseId, {
+        productId: values.productId,
+        quantity: values.quantity,
+        reason: values.reason,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stocks'] }),
+  })
+
+  const productsQuery = useQuery({
+    queryKey: ['products', 'list', defaultPageParams],
+    queryFn: () => productsApi.list(defaultPageParams),
+  })
+  const transportsQuery = useQuery({
+    queryKey: ['transports', 'list', defaultPageParams],
+    queryFn: () => transportsApi.list(defaultPageParams),
+  })
+  const ownWarehousesQuery = useQuery({
+    queryKey: ['ownWarehouses', 'list', defaultPageParams],
+    queryFn: () => ownWarehousesApi.list(defaultPageParams),
+  })
+  const partnersQuery = useQuery({
+    queryKey: ['partners', 'list', defaultPageParams],
+    queryFn: () => partnersApi.list(defaultPageParams),
+  })
+
+  const products = pageContent(productsQuery.data, mockProducts)
+  const transports = pageContent(transportsQuery.data, mockTransports)
+  const ownWarehouses = pageContent(ownWarehousesQuery.data, mockOwnWarehouses)
+  const partners = pageContent(partnersQuery.data, mockPartners)
 
   const activePartners = useMemo(
     () => partners.filter((partner) => partner.isActive),
     [partners],
   )
 
-  const addProduct = (values: ProductCreateRequest) => {
-    setProducts((items) => [...items, { ...values, id: nextId(items) }])
-    message.success('Товар добавлен в mock-данные')
+  const partnerWarehousesQuery = useQuery({
+    queryKey: [
+      'partnerWarehouses',
+      'byPartner',
+      activePartners.map((partner) => partner.id).join(','),
+    ],
+    queryFn: async () => {
+      const pages = await Promise.all(
+        activePartners.map((partner) =>
+          partnerWarehousesApi.list(partner.id, defaultPageParams),
+        ),
+      )
+      return pages.flatMap((page) => page.content)
+    },
+    enabled: activePartners.length > 0,
+  })
+  const partnerWarehouses =
+    partnerWarehousesQuery.data ?? mockPartnerWarehouses
+
+  const stocksQuery = useQuery({
+    queryKey: [
+      'stocks',
+      'byWarehouse',
+      ownWarehouses.map((warehouse) => warehouse.id).join(','),
+    ],
+    queryFn: async () => {
+      const pages = await Promise.all(
+        ownWarehouses.map((warehouse) =>
+          stocksApi.list(warehouse.id, defaultPageParams),
+        ),
+      )
+      return pages.flatMap((page) => page.content)
+    },
+    enabled: ownWarehouses.length > 0,
+  })
+  const stocks = stocksQuery.data ?? mockStocks
+
+  const liveQueryCount = [
+    productsQuery,
+    transportsQuery,
+    ownWarehousesQuery,
+    partnersQuery,
+    partnerWarehousesQuery,
+    stocksQuery,
+  ].filter((query) => query.isSuccess).length
+
+  const addProduct = async (values: ProductCreateRequest) => {
+    try {
+      await createProductMutation.mutateAsync(values)
+      message.success('Товар создан через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+
+      setProducts((items) => [...items, { ...values, id: nextId(items) }])
+      message.warning('Backend недоступен, товар добавлен в mock-данные')
+      return true
+    }
   }
 
-  const addTransport = (values: TransportCreateRequest) => {
-    setTransports((items) => [...items, { ...values, id: nextId(items) }])
-    message.success('Транспорт добавлен в mock-данные')
+  const addTransport = async (values: TransportCreateRequest) => {
+    try {
+      await createTransportMutation.mutateAsync(values)
+      message.success('Транспорт создан через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+
+      setTransports((items) => [...items, { ...values, id: nextId(items) }])
+      message.warning('Backend недоступен, транспорт добавлен в mock-данные')
+      return true
+    }
   }
 
-  const addOwnWarehouse = (values: OwnWarehouseCreateRequest) => {
+  const addOwnWarehouse = async (values: OwnWarehouseCreateRequest) => {
+    try {
+      await createOwnWarehouseMutation.mutateAsync(values)
+      message.success('Склад создан через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+    }
+
     const linkedTransports = transports
       .filter((transport) => values.transportIds.includes(transport.id))
       .map((transport) => ({
@@ -1308,51 +1547,88 @@ function AppContent() {
         transports: linkedTransports,
       },
     ])
-    message.success('Склад добавлен в mock-данные')
+    message.warning('Backend недоступен, склад добавлен в mock-данные')
+    return true
   }
 
-  const addPartner = (values: PartnerCreateRequest) => {
-    setPartners((items) => [
-      ...items,
-      {
-        id: nextId(items),
-        name: values.name,
-        contactEmail: values.contactEmail,
-        isActive: values.isActive,
-      },
-    ])
-    message.success('Партнер добавлен в mock-данные')
+  const addPartner = async (values: PartnerCreateRequest) => {
+    try {
+      await createPartnerMutation.mutateAsync(values)
+      message.success('Партнер создан через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+
+      setPartners((items) => [
+        ...items,
+        {
+          id: nextId(items),
+          name: values.name,
+          contactEmail: values.contactEmail,
+          isActive: values.isActive,
+        },
+      ])
+      message.warning('Backend недоступен, партнер добавлен в mock-данные')
+      return true
+    }
   }
 
-  const addPartnerWarehouse = (values: PartnerWarehouseCreateRequest) => {
+  const addPartnerWarehouse = async (values: PartnerWarehouseCreateRequest) => {
     if (!values.acceptsLand && !values.acceptsSea && !values.acceptsAir) {
       message.error('Нужен хотя бы один доступный тип доставки')
-      return
+      return false
     }
 
-    setPartnerWarehouses((items) => [
-      ...items,
-      {
-        ...values,
-        id: nextId(items),
-        isActive: true,
-      },
-    ])
-    message.success('Склад партнера добавлен в mock-данные')
+    try {
+      await createPartnerWarehouseMutation.mutateAsync(values)
+      message.success('Склад партнера создан через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+
+      setPartnerWarehouses((items) => [
+        ...items,
+        {
+          ...values,
+          id: nextId(items),
+          isActive: true,
+        },
+      ])
+      message.warning('Backend недоступен, склад партнера добавлен в mock-данные')
+      return true
+    }
   }
 
-  const addStock = (values: StockFormValues) => {
-    setStocks((items) => [
-      ...items,
-      {
-        id: nextId(items),
-        ownWarehouseId: values.ownWarehouseId,
-        productId: values.productId,
-        quantity: values.quantity,
-        reservedQuantity: 0,
-      },
-    ])
-    message.success('Остаток добавлен в mock-данные')
+  const addStock = async (values: StockFormValues) => {
+    try {
+      await addStockMutation.mutateAsync(values)
+      message.success('Остаток добавлен через API')
+      return true
+    } catch (error) {
+      if (isBackendValidationError(error)) {
+        showApiError(error)
+        return false
+      }
+
+      setStocks((items) => [
+        ...items,
+        {
+          id: nextId(items),
+          ownWarehouseId: values.ownWarehouseId,
+          productId: values.productId,
+          quantity: values.quantity,
+          reservedQuantity: 0,
+        },
+      ])
+      message.warning('Backend недоступен, остаток добавлен в mock-данные')
+      return true
+    }
   }
 
   return (
@@ -1372,14 +1648,17 @@ function AppContent() {
           <div>
             <Title level={3}>Рабочий интерфейс</Title>
             <Text type="secondary">
-              Frontend sync with backend API, mock mode until backend builds
+              Frontend reads backend API with mock fallback for offline demo
             </Text>
           </div>
           <Space wrap>
             <Tag icon={<ApiOutlined />} color="processing">
               /api proxy to localhost:8080
             </Tag>
-            <Tag color="warning">backend compile fix needed</Tag>
+            <Tag color="success">backend API v0.0.4</Tag>
+            <Tag color={liveQueryCount ? 'success' : 'default'}>
+              {liveQueryCount ? `live GET ${liveQueryCount}/6` : 'mock fallback'}
+            </Tag>
           </Space>
         </Header>
         <Content className="content">
