@@ -9,14 +9,7 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "stock_movements",
-        indexes = {
-                @Index(name = "idx_stock_movements_stock_id", columnList = "stock_id"),
-                @Index(name = "idx_stock_movements_created_at", columnList = "created_at"),
-                @Index(name = "idx_stock_movements_type", columnList = "movement_type")
-        }
-)
+@Table(name = "stock_movements")
 @SQLDelete(sql = "UPDATE stock_movements SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 @Getter
@@ -46,7 +39,7 @@ public class StockMovement {
     @Column(name = "quantity_after", nullable = false, updatable = false)
     private Integer quantityAfter;
 
-    @Column(name = "reason", columnDefinition = "TEXT", updatable = false)
+    @Column(name = "reason", columnDefinition = "varchar", updatable = false)
     private String reason;
 
     @Column(name = "is_deleted", nullable = false)
@@ -58,10 +51,4 @@ public class StockMovement {
     private LocalDateTime createdAt;
 
 
-
-    public enum MovementType {
-        REPLENISHMENT, // Пополнение (приемка)
-        SHIPMENT,      // Отгрузка
-        ADJUSTMENT     // Корректировка (инвентаризация/брак)
-    }
 }

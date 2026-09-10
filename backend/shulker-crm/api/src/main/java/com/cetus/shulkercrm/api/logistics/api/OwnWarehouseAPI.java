@@ -1,10 +1,11 @@
 package com.cetus.shulkercrm.api.logistics.api;
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.logistics.dto.OwnWarehouseCreateRequest;
 import com.cetus.shulkercrm.api.logistics.dto.OwnWarehouseResponse;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,7 +17,9 @@ public interface OwnWarehouseAPI {
     OwnWarehouseResponse createWareHouse(@RequestBody @Valid OwnWarehouseCreateRequest request);
 
     @GetMapping
-    Page<OwnWarehouseResponse> getAllWarehouses(Pageable pageable);
+    PageResponse<OwnWarehouseResponse> getAllWarehouses(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size);
 
     @GetMapping("/{id}")
     OwnWarehouseResponse getWareHouseById(@PathVariable Long id);

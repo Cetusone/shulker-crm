@@ -10,9 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "partners", indexes = {
-        @Index(name = "idx_partners_is_active", columnList = "is_active")
-})
+@Table(name = "partners")
 
 
 @SQLDelete(sql = "UPDATE partners SET is_deleted = true WHERE id = ?")
@@ -31,7 +29,7 @@ public class Partner {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(name = "api_key", nullable = false, unique = true, length = 100)
+    @Column(name = "api_key", nullable = false, length = 100)
     private String apiKey;
 
     @Column(name = "contact_email", length = 255)

@@ -9,19 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "stocks",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uq_stocks_warehouse_product",
-                        columnNames = {"own_warehouse_id", "product_id"}
-                )
-        },
-        indexes = {
-                @Index(name = "idx_stocks_own_warehouse_id", columnList = "own_warehouse_id"),
-                @Index(name = "idx_stocks_product_id", columnList = "product_id")
-        }
-)
+@Table(name = "stocks")
 @SQLDelete(sql = "UPDATE stocks SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 @Getter

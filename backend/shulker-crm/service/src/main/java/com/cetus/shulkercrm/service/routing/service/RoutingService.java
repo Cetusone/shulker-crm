@@ -8,6 +8,7 @@ import com.cetus.shulkercrm.api.logistics.api.OwnWarehouseAPI;
 import com.cetus.shulkercrm.api.logistics.api.TransportAPI;
 import com.cetus.shulkercrm.api.logistics.dto.OwnWarehouseResponse;
 import com.cetus.shulkercrm.api.logistics.dto.TransportResponse;
+import com.cetus.shulkercrm.api.logistics.dto.TransportShortDto;
 import com.cetus.shulkercrm.api.logistics.dto.TransportType;
 import com.cetus.shulkercrm.api.partners.api.PartnersWarehouseAPI;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseResponse;
@@ -18,7 +19,6 @@ import com.cetus.shulkercrm.api.routing.dto.DeliveryPreference;
 import com.cetus.shulkercrm.service.routing.util.GeoUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -53,11 +53,14 @@ public class RoutingService {
 
         List<DeliveryOptionResponse> options = new ArrayList<>();
 
-        List<OwnWarehouseResponse> warehouses = ownWarehouseAPI.getAllWarehouses(Pageable.unpaged()).getContent();
+        //List<OwnWarehouseResponse> warehouses = ownWarehouseAPI.getAllWarehouses(Pageable.unpaged()).getContent();
+
+        List<OwnWarehouseResponse> warehouses = new ArrayList<>(); //ставлю заглушку
 
         for (OwnWarehouseResponse warehouse : warehouses) {
 
-            List<StockResponse> stocks = stockAPI.getAllStocks(warehouse.id(), Pageable.unpaged()).getContent();
+            //List<StockResponse> stocks = stockAPI.getAllStocks(warehouse.id(), Pageable.unpaged()).getContent();
+            List<StockResponse> stocks = new ArrayList<>(); //тоже пока что заглушка
 
             Optional<StockResponse> productStock = stocks.stream()
                     .filter(s -> s.productId().equals(request.productId()))
@@ -72,7 +75,7 @@ public class RoutingService {
                 continue;
             }
 
-            for (OwnWarehouseResponse.TransportShortDto transportShort : warehouse.transports()) {
+            for (TransportShortDto transportShort : warehouse.transports()) {
                 TransportType type = TransportType.valueOf(transportShort.transportType());
 
                 if (!acceptedTypes.contains(type)) {

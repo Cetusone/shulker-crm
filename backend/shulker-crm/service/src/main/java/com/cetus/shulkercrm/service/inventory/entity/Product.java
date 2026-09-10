@@ -13,12 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(
-        name = "products",
-        indexes = {
-                @Index(name = "idx_products_name", columnList = "name")
-        }
-)
+@Table(name = "products")
 @SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 @Getter
@@ -37,10 +32,10 @@ public class Product {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "varchar")
     private String description;
 
-    @Column(name = "sku", nullable = false, unique = true, length = 50)
+    @Column(name = "sku", nullable = false, length = 50)
     private String sku;
 
     @Column(name = "weight_kg", nullable = false, precision = 10, scale = 4)

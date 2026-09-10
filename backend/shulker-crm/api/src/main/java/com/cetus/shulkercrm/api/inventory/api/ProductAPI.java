@@ -1,11 +1,12 @@
 package com.cetus.shulkercrm.api.inventory.api;
 
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.inventory.dto.ProductCreateRequest;
 import com.cetus.shulkercrm.api.inventory.dto.ProductResponse;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,7 +18,9 @@ public interface ProductAPI {
     ProductResponse createProduct(@RequestBody @Valid ProductCreateRequest request);
 
     @GetMapping
-    Page<ProductResponse> getAllProducts(Pageable pageable);
+    PageResponse<ProductResponse> getAllProducts(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size);
 
     @GetMapping("/{id}")
     ProductResponse getProductById(@PathVariable long id);
@@ -25,7 +28,7 @@ public interface ProductAPI {
     @PutMapping("/{id}")
     ProductResponse updateProduct(@PathVariable long id, @RequestBody @Valid ProductCreateRequest request);
 
-    @DeleteMapping
+    @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteProduct(@PathVariable long id);
 

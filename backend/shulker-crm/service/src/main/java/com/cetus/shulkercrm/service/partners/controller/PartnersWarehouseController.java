@@ -1,17 +1,20 @@
 package com.cetus.shulkercrm.service.partners.controller;
 
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.partners.api.PartnersWarehouseAPI;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseCreateRequest;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseResponse;
+import com.cetus.shulkercrm.service.common.PageMapper;
 import com.cetus.shulkercrm.service.partners.service.PartnerWarehouseService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
+@Validated
 public class PartnersWarehouseController implements PartnersWarehouseAPI {
 
     private final PartnerWarehouseService warehouseService;
@@ -23,8 +26,8 @@ public class PartnersWarehouseController implements PartnersWarehouseAPI {
     }
 
     @Override
-    public Page<PartnerWarehouseResponse> getWarehouses(long partnerId, Pageable pageable) {
-        return warehouseService.getWarehouses(partnerId, pageable);
+    public PageResponse<PartnerWarehouseResponse> getWarehouses(long partnerId, int page, int size) {
+        return PageMapper.toResponse(warehouseService.getWarehouses(partnerId, PageRequest.of(page, size)));
     }
 
     @Override

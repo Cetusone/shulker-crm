@@ -14,10 +14,4 @@ public record ProductResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         List<CharacteristicResponse> characteristics
-) {
-    public record CharacteristicResponse(
-            Long id,
-            String attributeName,
-            String attributeValue
-    ) {}
-}
+) {}

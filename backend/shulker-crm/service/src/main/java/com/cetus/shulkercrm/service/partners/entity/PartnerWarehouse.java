@@ -11,10 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "partner_warehouses", indexes = {
-        @Index(name = "idx_warehouses_partner_id", columnList = "partner_id"),
-        @Index(name = "idx_warehouses_is_active", columnList = "is_active")
-})
+@Table(name = "partner_warehouses")
 
 @SQLDelete(sql = "UPDATE partner_warehouses SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
@@ -37,7 +34,7 @@ public class PartnerWarehouse {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "varchar")
     private String address;
 
     @Column(nullable = false, precision = 9, scale = 6)

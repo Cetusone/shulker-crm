@@ -3,9 +3,11 @@ package com.cetus.shulkercrm.service.inventory.service;
 
 import com.cetus.shulkercrm.api.inventory.dto.StockCreateRequest;
 import com.cetus.shulkercrm.api.inventory.dto.StockResponse;
+import com.cetus.shulkercrm.service.inventory.entity.MovementType;
 import com.cetus.shulkercrm.service.inventory.entity.Product;
 import com.cetus.shulkercrm.service.inventory.entity.Stock;
 import com.cetus.shulkercrm.service.inventory.entity.StockMovement;
+import com.cetus.shulkercrm.service.inventory.mapper.StockMapper;
 import com.cetus.shulkercrm.service.inventory.repository.ProductRepository;
 import com.cetus.shulkercrm.service.inventory.repository.StockMovementRepository;
 import com.cetus.shulkercrm.service.inventory.repository.StockRepository;
@@ -26,6 +28,7 @@ public class StockService {
     private final StockRepository stockRepository;
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
+    private final StockMapper stockMapper;
 
     @Transactional
     public StockResponse addProductOnWarehouse(Long wareHouseId, StockCreateRequest request) {
@@ -49,13 +52,13 @@ public class StockService {
 
         StockMovement movement = StockMovement.builder()
                 .stock(savedStock)
-                .movementType(StockMovement.MovementType.REPLENISHMENT)
+                .movementType(MovementType.REPLENISHMENT)
                 .quantityChange(request.quantity())
                 .quantityAfter(savedStock.getQuantity())
                 .reason(request.reason() != null ? request.reason() : "Размещение товара")
                 .build();
         StockMovement savedMovement = stockMovementRepository.save(movement);
-        return mapToResponse(savedStock);
+        return stockMapper.toResponse(savedStock);
 
 
     }
@@ -64,18 +67,7 @@ public class StockService {
     public Page<StockResponse> getAllStocks(Long warehouseId, Pageable pageable) {
         log.info("getAllStocks");
         Page<Stock> stocks =  stockRepository.findAllByOwnWarehouseId(warehouseId, pageable);
-        return stocks.map(this::mapToResponse);
+        return stocks.map(stockMapper::toResponse);
 
-    }
-
-    private StockResponse mapToResponse(Stock stock) {
-        return new StockResponse(
-                stock.getId(),
-                stock.getOwnWarehouseId(),
-                stock.getProduct().getId(),
-                stock.getQuantity(),
-                stock.getReservedQuantity(),
-                stock.getUpdatedAt()
-        );
     }
 }

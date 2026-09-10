@@ -4,6 +4,7 @@ package com.cetus.shulkercrm.service.partners.service;
 import com.cetus.shulkercrm.api.partners.dto.PartnerCreateRequest;
 import com.cetus.shulkercrm.api.partners.dto.PartnerResponse;
 import com.cetus.shulkercrm.service.partners.entity.Partner;
+import com.cetus.shulkercrm.service.partners.mapper.PartnerMapper;
 import com.cetus.shulkercrm.service.partners.repository.PartnerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,26 +20,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartnerService {
 
     private final PartnerRepository partnerRepository;
+    private final PartnerMapper partnerMapper;
 
     @Transactional
     public PartnerResponse createPartner(PartnerCreateRequest request) {
         log.debug("Создание партнёра: {}", request.name());
 
-        Partner partner = Partner.builder()
-                .name(request.name())
-                .apiKey(request.apiKey())
-                .contactEmail(request.contactEmail())
-                .isActive(request.isActive() != null ? request.isActive() : true)
-                .build();
+        Partner partner = partnerMapper.toEntity(request);
 
-        return mapToResponse(partnerRepository.save(partner));
+        return partnerMapper.toResponse(partnerRepository.save(partner));
     }
 
     @Transactional(readOnly = true)
     public Page<PartnerResponse> getPartners(Pageable pageable) {
         log.debug("Запрос списка всех партнёров");
         Page<Partner> partners = partnerRepository.findAll(pageable);
-        return partners.map(this::mapToResponse);
+        return partners.map(partnerMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -48,7 +45,7 @@ public class PartnerService {
         Partner partner = partnerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Партнёр с ID " + id + " не найден"));
 
-        return mapToResponse(partner);
+        return partnerMapper.toResponse(partner);
     }
 
     @Transactional
@@ -58,14 +55,9 @@ public class PartnerService {
         Partner partner = partnerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Партнёр с ID " + id + " не найден"));
 
-        partner.setName(request.name());
-        partner.setApiKey(request.apiKey());
-        partner.setContactEmail(request.contactEmail());
+        partnerMapper.updateFromRequest(request, partner);
 
-        if (request.isActive() != null) {
-            partner.setIsActive(request.isActive());
-        }
-        return mapToResponse(partnerRepository.save(partner));
+        return partnerMapper.toResponse(partnerRepository.save(partner));
     }
 
     @Transactional
@@ -73,16 +65,5 @@ public class PartnerService {
 
         log.debug("Удаление партнёра с ID: {}", id);
         partnerRepository.deleteById(id);
-    }
-
-    private PartnerResponse mapToResponse(Partner partner) {
-        return new PartnerResponse(
-                partner.getId(),
-                partner.getName(),
-                partner.getContactEmail(),
-                partner.getIsActive(),
-                partner.getCreatedAt(),
-                partner.getUpdatedAt()
-        );
     }
 }

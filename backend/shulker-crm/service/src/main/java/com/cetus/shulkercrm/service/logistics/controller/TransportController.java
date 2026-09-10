@@ -1,18 +1,21 @@
 package com.cetus.shulkercrm.service.logistics.controller;
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.logistics.api.TransportAPI;
 import com.cetus.shulkercrm.api.logistics.dto.TransportCreateRequest;
 import com.cetus.shulkercrm.api.logistics.dto.TransportResponse;
+import com.cetus.shulkercrm.service.common.PageMapper;
 import com.cetus.shulkercrm.service.logistics.service.TransportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@Validated
 public class TransportController implements TransportAPI {
 
     private final TransportService transportService;
@@ -24,9 +27,9 @@ public class TransportController implements TransportAPI {
     }
 
     @Override
-    public Page<TransportResponse> getAllTransports(Pageable pageable){
-        log.info("getAllTransports");
-        return transportService.getAllTransports(pageable);
+    public PageResponse<TransportResponse> getAllTransports(int page, int size) {
+        log.info("getAllTransports,  page: {}, size: {}", page, size);
+        return PageMapper.toResponse(transportService.getAllTransports(PageRequest.of(page, size)));
     }
 
     @Override
