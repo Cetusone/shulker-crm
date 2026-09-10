@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
@@ -20,12 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(
-        name = "transports",
-        indexes = {
-                @Index(name = "idx_transports_transport_type", columnList = "transport_type")
-        }
-)
+@Table(name = "transports")
 
 @SQLDelete(sql = "UPDATE transports SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")

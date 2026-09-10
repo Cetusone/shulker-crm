@@ -34,7 +34,7 @@ public class OwnWarehouse {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "address", columnDefinition = "TEXT")
+    @Column(name = "address", columnDefinition = "varchar")
     private String address;
 
     @Column(name = "latitude", nullable = false, precision = 9, scale = 6)

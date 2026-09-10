@@ -1,4 +1,3 @@
 rootProject.name = 'shulker-srm'
 
-include "api"
-include "service"
+include ("api", "service")

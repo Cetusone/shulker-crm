@@ -1,19 +1,22 @@
 package com.cetus.shulkercrm.service.partners.controller;
 
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.partners.api.PartnersAPI;
 import com.cetus.shulkercrm.api.partners.dto.PartnerCreateRequest;
 import com.cetus.shulkercrm.api.partners.dto.PartnerResponse;
+import com.cetus.shulkercrm.service.common.PageMapper;
 import com.cetus.shulkercrm.service.partners.service.PartnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 public class PartnersController implements PartnersAPI {
 
     private final PartnerService partnerService;
@@ -25,9 +28,9 @@ public class PartnersController implements PartnersAPI {
     }
 
     @Override
-    public Page<PartnerResponse> getPartners(Pageable pageable) {
-        log.info("getPartners");
-        return partnerService.getPartners(pageable);
+    public PageResponse<PartnerResponse> getPartners(int page, int size) {
+        log.info("getPartners,  page: {}, size: {}", page, size);
+        return PageMapper.toResponse(partnerService.getPartners(PageRequest.of(page, size)));
     }
 
     @Override

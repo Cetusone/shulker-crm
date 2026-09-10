@@ -5,6 +5,7 @@ import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseCreateRequest;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseResponse;
 import com.cetus.shulkercrm.service.partners.entity.Partner;
 import com.cetus.shulkercrm.service.partners.entity.PartnerWarehouse;
+import com.cetus.shulkercrm.service.partners.mapper.PartnerWarehouseMapper;
 import com.cetus.shulkercrm.service.partners.repository.PartnerRepository;
 import com.cetus.shulkercrm.service.partners.repository.PartnerWarehouseRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PartnerWarehouseService {
     private final PartnerWarehouseRepository partnerWarehouseRepository;
     private final PartnerRepository partnerRepository;
+    private final PartnerWarehouseMapper partnerWarehouseMapper;
 
     @Transactional
     public PartnerWarehouseResponse createWarehouse(long partnerId, PartnerWarehouseCreateRequest request) {
@@ -29,19 +31,10 @@ public class PartnerWarehouseService {
         Partner partner = partnerRepository.findById(partnerId)
                 .orElseThrow(() -> new EntityNotFoundException("Партнёр с ID " + partnerId + " не найден"));
 
-        PartnerWarehouse warehouse = PartnerWarehouse.builder()
-                .partner(partner)
-                .name(request.getName())
-                .address(request.getAddress())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .acceptsLand(request.getAcceptsLand())
-                .acceptsSea(request.getAcceptsSea())
-                .acceptsAir(request.getAcceptsAir())
-                .isActive(true)
-                .build();
+        PartnerWarehouse warehouse = partnerWarehouseMapper.toEntity(request);
+        warehouse.setPartner(partner);
 
-        return mapToResponse(partnerWarehouseRepository.save(warehouse));
+        return partnerWarehouseMapper.toResponse(partnerWarehouseRepository.save(warehouse));
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +42,7 @@ public class PartnerWarehouseService {
         log.debug("Запрос списка складов для партнёра ID: {}", partnerId);
 
         Page<PartnerWarehouse> warehouses = partnerWarehouseRepository.findAllByPartnerId(partnerId, pageable);
-        return warehouses.map(this::mapToResponse);
+        return warehouses.map(partnerWarehouseMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -57,7 +50,7 @@ public class PartnerWarehouseService {
         log.debug("Запрос склада ID: {} для партнёра ID: {}", warehouseId, partnerId);
 
         PartnerWarehouse warehouse = getWarehouseAndVerifyPartner(partnerId, warehouseId);
-        return mapToResponse(warehouse);
+        return partnerWarehouseMapper.toResponse(warehouse);
     }
 
     @Transactional
@@ -66,15 +59,9 @@ public class PartnerWarehouseService {
 
         PartnerWarehouse warehouse = getWarehouseAndVerifyPartner(partnerId, warehouseId);
 
-        warehouse.setName(request.getName());
-        warehouse.setAddress(request.getAddress());
-        warehouse.setLatitude(request.getLatitude());
-        warehouse.setLongitude(request.getLongitude());
-        warehouse.setAcceptsLand(request.getAcceptsLand());
-        warehouse.setAcceptsSea(request.getAcceptsSea());
-        warehouse.setAcceptsAir(request.getAcceptsAir());
+        partnerWarehouseMapper.updateFromRequest(request, warehouse);
 
-        return mapToResponse(partnerWarehouseRepository.save(warehouse));
+        return partnerWarehouseMapper.toResponse(partnerWarehouseRepository.save(warehouse));
     }
 
     @Transactional
@@ -88,22 +75,5 @@ public class PartnerWarehouseService {
         return partnerWarehouseRepository.findByIdAndPartnerId(warehouseId, partnerId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Склад с ID " + warehouseId + " не найден у партнёра " + partnerId));
-    }
-
-    private PartnerWarehouseResponse mapToResponse(PartnerWarehouse warehouse) {
-        return new PartnerWarehouseResponse(
-                warehouse.getId(),
-                warehouse.getPartner().getId(),
-                warehouse.getName(),
-                warehouse.getAddress(),
-                warehouse.getLatitude(),
-                warehouse.getLongitude(),
-                warehouse.getAcceptsLand(),
-                warehouse.getAcceptsSea(),
-                warehouse.getAcceptsAir(),
-                warehouse.getIsActive(),
-                warehouse.getCreatedAt(),
-                warehouse.getUpdatedAt()
-        );
     }
 }

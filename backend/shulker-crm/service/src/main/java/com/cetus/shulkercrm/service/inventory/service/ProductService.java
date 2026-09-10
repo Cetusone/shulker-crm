@@ -3,7 +3,7 @@ package com.cetus.shulkercrm.service.inventory.service;
 import com.cetus.shulkercrm.api.inventory.dto.ProductCreateRequest;
 import com.cetus.shulkercrm.api.inventory.dto.ProductResponse;
 import com.cetus.shulkercrm.service.inventory.entity.Product;
-import com.cetus.shulkercrm.service.inventory.entity.ProductCharacteristic;
+import com.cetus.shulkercrm.service.inventory.mapper.ProductMapper;
 import com.cetus.shulkercrm.service.inventory.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -23,33 +21,22 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request) {
         log.info("createProduct, {}", request);
 
-        Product product = Product.builder()
-                .name(request.name())
-                .description(request.description())
-                .sku(request.sku())
-                .weightKg(request.weightKg())
-                .volumeM3(request.volumeM3())
-                .build();
+        Product product = productMapper.toEntity(request);
 
         if (request.characteristics() != null) {
-            request.characteristics().forEach(charDto -> {
-                ProductCharacteristic characteristic = ProductCharacteristic.builder()
-                        .attributeName(charDto.attributeName())
-                        .attributeValue(charDto.attributeValue())
-                        .build();
-
-                product.addCharacteristic(characteristic);
-            });
+            request.characteristics()
+                    .forEach(charDto -> product.addCharacteristic(productMapper.toEntity(charDto)));
         }
 
         Product savedProduct = productRepository.save(product);
 
-        return mapToResponse(savedProduct);
+        return productMapper.toResponse(savedProduct);
     }
 
     @Transactional(readOnly = true)
@@ -57,14 +44,14 @@ public class ProductService {
         log.info("getAllProducts");
         Page<Product> products = productRepository.findAll(pageable);
 
-        return products.map(this::mapToResponse);
+        return products.map(productMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public ProductResponse getProductById(long id) {
         log.info("getProductById {}", id);
         Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Товар с id: " + id + " не найден"));
-        return mapToResponse(product);
+        return productMapper.toResponse(product);
     }
 
     @Transactional
@@ -74,27 +61,17 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Товар с id: " + id + " не найден"));
 
-        product.setName(request.name());
-        product.setDescription(request.description());
-        product.setSku(request.sku());
-        product.setWeightKg(request.weightKg());
-        product.setVolumeM3(request.volumeM3());
+        productMapper.updateFromRequest(request, product);
 
         new ArrayList<>(product.getCharacteristics()).forEach(product::removeCharacteristic);
 
         if (request.characteristics() != null) {
-            request.characteristics().forEach(charDto -> {
-                ProductCharacteristic characteristic = ProductCharacteristic.builder()
-                        .attributeName(charDto.attributeName())
-                        .attributeValue(charDto.attributeValue())
-                        .build();
-
-                product.addCharacteristic(characteristic);
-            });
+            request.characteristics()
+                    .forEach(charDto -> product.addCharacteristic(productMapper.toEntity(charDto)));
         }
         productRepository.save(product);
 
-        return mapToResponse(product);
+        return productMapper.toResponse(product);
     }
 
     @Transactional
@@ -105,26 +82,4 @@ public class ProductService {
 
     }
 
-
-    private ProductResponse mapToResponse(Product product) {
-        List<ProductResponse.CharacteristicResponse> charResponses = product.getCharacteristics()
-                .stream().map(c -> new ProductResponse.CharacteristicResponse(
-                        c.getId(),
-                        c.getAttributeName(),
-                        c.getAttributeValue()
-                ))
-                .collect(Collectors.toList());
-
-        return new ProductResponse(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getSku(),
-                product.getWeightKg(),
-                product.getVolumeM3(),
-                product.getCreatedAt(),
-                product.getUpdatedAt(),
-                charResponses
-        );
-    }
 }

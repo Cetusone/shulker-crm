@@ -25,12 +25,5 @@ public record ProductCreateRequest(
         BigDecimal volumeM3,
 
         List<CharacteristicDto> characteristics
-) {
-    public record CharacteristicDto(
-            @NotBlank(message = "Название атрибута обязательно")
-            String attributeName,
-
-            @NotBlank(message = "Значение атрибута обязательно")
-            String attributeValue
-    ) {}
-}
+)
+{}

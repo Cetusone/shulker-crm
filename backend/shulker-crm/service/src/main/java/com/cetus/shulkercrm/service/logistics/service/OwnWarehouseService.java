@@ -3,6 +3,7 @@ package com.cetus.shulkercrm.service.logistics.service;
 
 import com.cetus.shulkercrm.api.logistics.dto.OwnWarehouseCreateRequest;
 import com.cetus.shulkercrm.api.logistics.dto.OwnWarehouseResponse;
+import com.cetus.shulkercrm.api.logistics.dto.TransportShortDto;
 import com.cetus.shulkercrm.service.logistics.entity.OwnWarehouse;
 import com.cetus.shulkercrm.service.logistics.entity.OwnWarehouseTransport;
 import com.cetus.shulkercrm.service.logistics.entity.Transport;
@@ -144,8 +145,8 @@ public class OwnWarehouseService {
 
 
     private OwnWarehouseResponse mapToResponse(OwnWarehouse warehouse, List<Transport> transports) {
-            List<OwnWarehouseResponse.TransportShortDto> transportDtos = transports.stream()
-                    .map(t -> new OwnWarehouseResponse.TransportShortDto(
+            List<TransportShortDto> transportDtos = transports.stream()
+                    .map(t -> new TransportShortDto(
                             t.getId(),
                             t.getTransportType().name(),
                             t.getName()

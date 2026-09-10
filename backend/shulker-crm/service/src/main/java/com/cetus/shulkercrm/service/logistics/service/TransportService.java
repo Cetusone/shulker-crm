@@ -6,6 +6,7 @@ import com.cetus.shulkercrm.api.logistics.dto.TransportResponse;
 import com.cetus.shulkercrm.service.logistics.entity.OwnWarehouse;
 import com.cetus.shulkercrm.service.logistics.entity.OwnWarehouseTransport;
 import com.cetus.shulkercrm.service.logistics.entity.Transport;
+import com.cetus.shulkercrm.service.logistics.mapper.TransportMapper;
 import com.cetus.shulkercrm.service.logistics.repository.OwnWarehouseRepository;
 import com.cetus.shulkercrm.service.logistics.repository.OwnWarehouseTransportRepository;
 import com.cetus.shulkercrm.service.logistics.repository.TransportRepository;
@@ -27,20 +28,14 @@ public class TransportService {
     private final TransportRepository transportRepository;
     private final OwnWarehouseTransportRepository ownWarehouseTransportRepository;
     private final OwnWarehouseRepository ownWarehouseRepository;
+    private final TransportMapper transportMapper;
 
     @Transactional
     public TransportResponse createTransport(TransportCreateRequest request) {
         log.info("createTransport {}", request);
-        Transport transport = Transport.builder()
-                .transportType(request.transportType())
-                .name(request.name())
-                .maxWeightKg(request.maxWeightKg())
-                .maxVolumeM3(request.maxVolumeM3())
-                .speedKmH(request.speedKmH())
-                .costPerKm(request.costPerKm())
-                .build();
+        Transport transport = transportMapper.toEntity(request);
         Transport savedTransport = transportRepository.save(transport);
-    return mapToResponse(savedTransport);
+        return transportMapper.toResponse(savedTransport);
     }
 
 
@@ -48,7 +43,7 @@ public class TransportService {
     public Page<TransportResponse>  getAllTransports(Pageable pageable) {
         log.info("getAllTransports");
         Page<Transport> transports = transportRepository.findAll(pageable);
-        return transports.map(this::mapToResponse);
+        return transports.map(transportMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +51,7 @@ public class TransportService {
         log.info("getTransportById {}", id);
         Transport transport = transportRepository.findById(id).orElseThrow(() ->
                 new EntityNotFoundException("Transport with id " + id + " not found"));
-        return mapToResponse(transport);
+        return transportMapper.toResponse(transport);
     }
 
     @Transactional
@@ -64,12 +59,8 @@ public class TransportService {
         log.info("updateTransportById {}", id);
         Transport transport = transportRepository.findById(id).orElseThrow(() ->
                 new EntityNotFoundException("Transport with id " + id + " not found"));
-        transport.setName(request.name());
-        transport.setMaxWeightKg(request.maxWeightKg());
-        transport.setMaxVolumeM3(request.maxVolumeM3());
-        transport.setSpeedKmH(request.speedKmH());
-        transport.setCostPerKm(request.costPerKm());
-        return mapToResponse(transportRepository.save(transport));
+        transportMapper.updateFromRequest(request, transport);
+        return transportMapper.toResponse(transportRepository.save(transport));
     }
 
 
@@ -108,21 +99,6 @@ public class TransportService {
         log.info("unlinkTransport transportId:{}, warehouseId:{}", transportId, warehouseId);
 
         ownWarehouseTransportRepository.deleteByTransportIdAndOwnWarehouseId(transportId, warehouseId);
-    }
-
-
-    private TransportResponse mapToResponse(Transport entity) {
-        return new TransportResponse(
-                entity.getId(),
-                entity.getTransportType(),
-                entity.getName(),
-                entity.getMaxWeightKg(),
-                entity.getMaxVolumeM3(),
-                entity.getSpeedKmH(),
-                entity.getCostPerKm(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
     }
 
 

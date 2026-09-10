@@ -6,28 +6,15 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-    @Table(
-            name = "own_warehouse_transports",
-            uniqueConstraints = {
-                    @UniqueConstraint(
-                            name = "uk_warehouse_transport",
-                            columnNames = {"own_warehouse_id", "transport_id"}
-                    )
-            },
-            indexes = {
-                    @Index(name = "idx_own_warehouse_transports_transport_id", columnList = "transport_id")
-            }
-    )
+@Table(name = "own_warehouse_transports")
 
 @SQLDelete(sql = "UPDATE own_warehouse_transports SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")

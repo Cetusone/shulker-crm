@@ -14,11 +14,4 @@ public record OwnWarehouseResponse(
         Instant createdAt,
         Instant updatedAt,
         List<TransportShortDto> transports
-) {
-
-    public record TransportShortDto(
-            Long id,
-            String transportType, // AUTO, RAILWAY, AVIATION
-            String name
-    ) {}
-}
+) {}

@@ -1,18 +1,21 @@
 package com.cetus.shulkercrm.service.inventory.controller;
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.inventory.api.ProductAPI;
 import com.cetus.shulkercrm.api.inventory.dto.ProductCreateRequest;
 import com.cetus.shulkercrm.api.inventory.dto.ProductResponse;
+import com.cetus.shulkercrm.service.common.PageMapper;
 import com.cetus.shulkercrm.service.inventory.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Slf4j
 @RequiredArgsConstructor
+@Validated
 public class ProductController implements ProductAPI {
 
     private final ProductService productService;
@@ -24,9 +27,9 @@ public class ProductController implements ProductAPI {
     }
 
     @Override
-    public Page<ProductResponse> getAllProducts(Pageable pageable) {
-        log.info("getAllProducts");
-        return productService.getAllProducts(pageable);
+    public PageResponse<ProductResponse> getAllProducts(int page, int size) {
+        log.info("getAllProducts page: {}, size: {}", page, size);
+        return PageMapper.toResponse(productService.getAllProducts(PageRequest.of(page, size)));
     }
 
     @Override

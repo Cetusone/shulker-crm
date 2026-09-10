@@ -1,11 +1,12 @@
 package com.cetus.shulkercrm.api.partners.api;
 
 
+import com.cetus.shulkercrm.api.common.dto.PageResponse;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseCreateRequest;
 import com.cetus.shulkercrm.api.partners.dto.PartnerWarehouseResponse;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,7 +18,12 @@ public interface PartnersWarehouseAPI {
     PartnerWarehouseResponse createWarehouse(@PathVariable long partnerId, @Valid @RequestBody PartnerWarehouseCreateRequest request);
 
     @GetMapping
-    Page<PartnerWarehouseResponse> getWarehouses(@PathVariable long partnerId, Pageable pageable);
+    PageResponse<PartnerWarehouseResponse> getWarehouses(
+            @PathVariable long partnerId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size);
+
+
 
     @GetMapping("/{warehouseId}")
     PartnerWarehouseResponse getWarehouseById(@PathVariable long partnerId, @PathVariable long warehouseId);
