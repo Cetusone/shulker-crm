@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: shulker-srm
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/shulker_db}
+    username: ${DB_USERNAME:shulker_user}
+    # без значения по умолчанию: приложение должно упасть на старте,
+    # а не подняться с чужим или случайным паролем
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+server:
+  port: ${SERVER_PORT:8080}
+
+routing:
+  osrm:
+    enabled: ${OSRM_ENABLED:true}
+    base-url: ${OSRM_BASE_URL:https://router.project-osrm.org}
+    profile: driving
+    connect-timeout: 2s
+    read-timeout: 5s
